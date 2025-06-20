@@ -1,50 +1,49 @@
-# 🗂 Job Application Management Backend
+# Job Application Management Backend
 
-A comprehensive FastAPI backend system for managing job applications, resumes, and user accounts — powered with external AI services and clean architecture.
+A FastAPI backend for managing job applications, resumes, and user accounts with external service integrations.
 
-## 🚀 Features
+## Features
 
-### 🔐 Core Functionality
-- **User Authentication**: Secure JWT-based signup, login, and profile management
-- **Resume Management**: Full CRUD with versioning
-- **Job Application Tracking**: Track job applications and status
-- **User Dashboard**: Analytics and statistics on job search progress
+**Core Functionality**
+- User authentication with JWT tokens
+- Resume management and storage
+- Job application tracking with status updates
+- User dashboard with basic analytics
 
-### 🔗 External Integrations
-- **Resume Optimization**: AI-powered tailoring via external service
-- **LinkedIn Scraper**: Fetch jobs and companies from LinkedIn
-- **Analytics**: Success rate tracking, trend insights
+**External Services**
+- Resume optimization service integration
+- LinkedIn job scraper for finding opportunities
+- Application analytics and reporting
 
-### ⚙️ Technical Highlights
-- **REST API**: Fully documented via OpenAPI
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Security**: Password hashing, JWT auth, input validation
-- **Testing**: Unit & integration tests with pytest and httpx
-- **Design**: OOP and SOLID-compliant architecture
+**Technical Stack**
+- FastAPI with automatic OpenAPI documentation
+- PostgreSQL database with SQLAlchemy
+- JWT authentication and password hashing
+- Comprehensive test suite
+- Docker support
 
-## 📦 Requirements
+## Requirements
 
-- Python 3.8+
-- PostgreSQL 12+
-- Virtual environment (recommended)
+- Python 3.8 or higher
+- PostgreSQL database
+- Virtual environment recommended
 
-## 🔧 Quick Setup
+## Setup
 
-### 1. Clone and Setup Environment
+Clone the repository and install dependencies:
+
 ```bash
 git clone <repository-url>
 cd job-application-backend
 
-# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
 pip install fastapi uvicorn sqlalchemy psycopg2-binary "pydantic[email]" python-jose passlib[bcrypt] python-multipart requests pytest httpx email-validator
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root with:
+Set up your environment variables in a `.env` file:
+
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/job_db
 SECRET_KEY=your-secret-key
@@ -52,108 +51,77 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-### 3. Run the Server
+Start the server:
+
 ```bash
 python main.py
 ```
 
-Visit the interactive docs at:
-👉 **http://localhost:5000/docs**
+The API will be available at http://localhost:5000 with documentation at http://localhost:5000/docs
 
-## 🧪 Running Tests
+## Testing
+
+Run the test suite:
 
 ```bash
-# Run comprehensive test suite
 python app_test.py
+```
 
-# Run integration tests
+For more detailed testing:
+
+```bash
 python integration_test.py
-
-# Run unit tests
 pytest tests/ -v
 ```
 
-## 🐳 Run with Docker
+## Docker
+
+Build and run with Docker:
 
 ```bash
 docker build -t job-app-backend .
 docker run -d -p 5000:5000 job-app-backend
 ```
 
-## 🗂 Project Structure
+## API Endpoints
+
+Main endpoints include:
+
+- `GET /health` - Check if API is running
+- `POST /auth/signup` - Create new user account
+- `POST /auth/login` - User login
+- `GET /user/profile` - Get user information
+- `POST /resume` - Create new resume
+- `GET /resume` - List user resumes
+- `POST /applications` - Create job application
+- `GET /applications` - List applications with filtering
+- `POST /services/resume/optimize` - Optimize resume content
+- `GET /services/linkedin/jobs` - Search for jobs on LinkedIn
+
+Complete API documentation is available at `/docs` when the server is running.
+
+## Project Structure
 
 ```
-.
-├── routers/
-│   ├── auth.py          # Authentication endpoints
-│   ├── applications.py  # Job application CRUD
-│   ├── resumes.py      # Resume management
-│   └── services.py     # External service integrations
-├── services/
-│   ├── resume_optimizer.py  # AI resume optimization
-│   └── linkedin_scraper.py  # LinkedIn job scraping
-├── tests/
-│   ├── unit/           # Unit tests
-│   └── integration/    # Integration tests
-├── main.py             # FastAPI application entry point
-├── models.py           # Database models
-├── schemas.py          # Pydantic schemas
-├── auth.py             # Authentication utilities
-├── database.py         # Database configuration
-├── app_test.py         # Comprehensive API tests
-├── integration_test.py # End-to-end tests
-├── Dockerfile          # Docker configuration
-└── README.md
+├── routers/           # API route handlers
+├── services/          # External service integrations
+├── tests/             # Test files
+├── main.py           # Application entry point
+├── models.py         # Database models
+├── schemas.py        # Data validation schemas
+├── auth.py           # Authentication utilities
+├── database.py       # Database setup
+└── Dockerfile        # Container configuration
 ```
 
-## 📚 API Documentation
+## Development
 
-The API provides comprehensive endpoints for:
+For development with auto-reload:
 
-- **Authentication** (`/auth/`): User signup, login, token refresh
-- **User Management** (`/user/`): Profile management and statistics
-- **Resume Management** (`/resume/`): CRUD operations with soft delete
-- **Applications** (`/applications/`): Job application tracking with filtering
-- **External Services** (`/services/`): Resume optimization and LinkedIn integration
-
-### Key Endpoints:
-- `GET /health` - Health check
-- `POST /auth/signup` - User registration
-- `POST /auth/login` - User authentication
-- `GET /user/profile` - Get user profile
-- `POST /resume` - Create resume
-- `GET /applications` - List applications with filters
-- `POST /services/resume/optimize` - Optimize resume
-- `GET /services/linkedin/jobs` - Search LinkedIn jobs
-
-Visit `/docs` for interactive API documentation with request/response examples.
-
-## 🛡️ Security Features
-
-- JWT token-based authentication
-- Password hashing with bcrypt
-- Input validation with Pydantic
-- SQL injection protection via SQLAlchemy ORM
-- CORS configuration for secure cross-origin requests
-
-## 🔧 Development
-
-### Setting Up Development Environment
 ```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run in development mode with auto-reload
 uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ```
 
-### Contributing
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## License
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License
