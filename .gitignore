@@ -45,9 +45,7 @@ replit.nix
 .pythonlibs/
 attached_assets/
 
-# Docker (remove if needed)
-Dockerfile
-docker-compose.yml
+# Docker
 .dockerignore
 
 # Database
