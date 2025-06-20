@@ -30,12 +30,9 @@ A FastAPI backend for managing job applications, resumes, and user accounts with
 
 ## Setup
 
-Clone the repository and install dependencies:
+Install dependencies:
 
 ```bash
-git clone <repository-url>
-cd job-application-backend
-
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
@@ -121,7 +118,3 @@ For development with auto-reload:
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ```
-
-## License
-
-MIT License
