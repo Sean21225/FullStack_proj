@@ -4,7 +4,7 @@ Implementing secure authentication following best practices
 """
 
 import os
-import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from passlib.context import CryptContext
@@ -65,8 +65,8 @@ class AuthManager:
         """Verify and decode JWT token"""
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            user_id: int = payload.get("user_id")
-            username: str = payload.get("sub")
+            user_id = payload.get("user_id")
+            username = payload.get("sub")
             
             if user_id is None or username is None:
                 raise HTTPException(
@@ -77,13 +77,7 @@ class AuthManager:
             
             return TokenData(user_id=user_id, username=username)
         
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        except jwt.JWTError:
+        except JWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
