@@ -15,6 +15,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const logout = () => {
+    localStorage.removeItem('token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
+  };
+
   const fetchUserProfile = React.useCallback(async () => {
     try {
       const response = await api.get('/user/profile');
@@ -26,12 +32,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
-  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -82,12 +82,6 @@ export const AuthProvider = ({ children }) => {
       
       return { success: false, error: message };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
   };
 
   const value = {
