@@ -102,10 +102,13 @@ A FastAPI-based backend system for managing job applications, resumes, and user 
 ## Recent Changes
 - Created complete React frontend with authentication, dashboard, applications management, resumes management, and user profile
 - Integrated React frontend with existing FastAPI backend
-- Added Docker configuration for both frontend and backend
-- Set up comprehensive project structure with app/frontend and app/backend directories
-- Created workflows for both FastAPI server (port 5000) and React frontend (port 3000)
-- Added comprehensive documentation and integration testing
+- Fixed data display issues across all frontend components (resumes, applications, statistics)
+- Reorganized project structure for Docker deployment with proper app/backend and app/frontend directories
+- Fixed Docker configuration issues for PyCharm deployment
+- Updated frontend Dockerfile to use npm install instead of npm ci
+- Fixed port mappings and removed obsolete docker-compose version field
+- Created comprehensive Docker setup guides for development and production
+- All frontend and backend functionality working correctly in Docker environment
 
 ## User Preferences
 
