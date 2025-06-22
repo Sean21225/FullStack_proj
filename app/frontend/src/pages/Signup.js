@@ -26,6 +26,19 @@ const Signup = () => {
     setLoading(true);
     setError('');
 
+    // Validate form data
+    if (formData.username.length < 3) {
+      setError('Username must be at least 3 characters long');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
@@ -39,9 +52,10 @@ const Signup = () => {
     });
     
     if (result.success) {
+      alert('Account created successfully! Please log in.');
       navigate('/login');
     } else {
-      setError(result.error);
+      setError(result.error || 'Signup failed. Please try again.');
     }
     
     setLoading(false);

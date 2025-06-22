@@ -15,18 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Verify token is still valid
-      fetchUserProfile();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = React.useCallback(async () => {
     try {
       const response = await api.get('/user/profile');
       setUser(response.data);
@@ -36,7 +25,24 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Verify token is still valid
+      fetchUserProfile();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchUserProfile]);
 
   const login = async (username, password) => {
     try {
@@ -56,10 +62,24 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      await api.post('/auth/signup', userData);
-      return { success: true };
+      const response = await api.post('/auth/signup', userData);
+      return { success: true, data: response.data };
     } catch (error) {
-      const message = error.response?.data?.detail || 'Signup failed';
+      console.error('Signup error:', error);
+      let message = 'Signup failed. Please try again.';
+      
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          message = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          message = error.response.data.detail.map(err => err.msg || err).join(', ');
+        }
+      } else if (error.response?.status === 422) {
+        message = 'Invalid input data. Please check your information.';
+      } else if (error.response?.status === 409) {
+        message = 'Username or email already exists.';
+      }
+      
       return { success: false, error: message };
     }
   };

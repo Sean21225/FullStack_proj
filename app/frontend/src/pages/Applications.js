@@ -24,7 +24,7 @@ const Applications = () => {
   useEffect(() => {
     fetchApplications();
     fetchResumes();
-  }, [filters]);
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchApplications = async () => {
     try {
