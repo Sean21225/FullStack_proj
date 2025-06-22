@@ -32,10 +32,21 @@ const Applications = () => {
       if (filters.status) params.append('status_filter', filters.status);
       if (filters.company) params.append('company_filter', filters.company);
       
+      console.log('Fetching applications...');
       const response = await api.get(`/applications?${params.toString()}`);
-      setApplications(response.data.items || []);
+      console.log('Applications response:', response.data);
+      
+      // Handle different response formats
+      if (Array.isArray(response.data)) {
+        setApplications(response.data);
+      } else if (response.data.items) {
+        setApplications(response.data.items);
+      } else {
+        setApplications([]);
+      }
     } catch (error) {
       console.error('Failed to fetch applications:', error);
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -43,24 +54,41 @@ const Applications = () => {
 
   const fetchResumes = async () => {
     try {
+      console.log('Fetching resumes for applications...');
       const response = await api.get('/resume');
-      setResumes(response.data.items || []);
+      console.log('Resumes response for applications:', response.data);
+      
+      // Handle different response formats
+      if (Array.isArray(response.data)) {
+        setResumes(response.data);
+      } else if (response.data.items) {
+        setResumes(response.data.items);
+      } else {
+        setResumes([]);
+      }
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
+      setResumes([]);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log('Submitting application:', formData);
+    
     try {
       const submitData = { ...formData };
       if (!submitData.resume_id) delete submitData.resume_id;
 
+      let response;
       if (editingApplication) {
-        await api.put(`/applications/${editingApplication.application_id}`, submitData);
+        response = await api.put(`/applications/${editingApplication.application_id}`, submitData);
       } else {
-        await api.post('/applications', submitData);
+        response = await api.post('/applications', submitData);
       }
+      
+      console.log('Application saved successfully:', response.data);
       
       setShowModal(false);
       setEditingApplication(null);
@@ -68,6 +96,17 @@ const Applications = () => {
       fetchApplications();
     } catch (error) {
       console.error('Failed to save application:', error);
+      console.error('Error response:', error.response);
+      
+      let errorMessage = 'Failed to save application. Please try again.';
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          errorMessage = error.response.data.detail.map(err => err.msg || err).join(', ');
+        }
+      }
+      alert(errorMessage);
     }
   };
 

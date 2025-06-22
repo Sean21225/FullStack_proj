@@ -19,7 +19,15 @@ const Dashboard = () => {
       ]);
       
       setStats(statsResponse.data);
-      setRecentApplications(applicationsResponse.data.items || []);
+      
+      // Handle applications response format
+      if (Array.isArray(applicationsResponse.data)) {
+        setRecentApplications(applicationsResponse.data);
+      } else if (applicationsResponse.data.items) {
+        setRecentApplications(applicationsResponse.data.items);
+      } else {
+        setRecentApplications([]);
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
