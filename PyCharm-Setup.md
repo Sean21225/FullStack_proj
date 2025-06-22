@@ -36,12 +36,24 @@ project/
 
 ### 2. Run in PyCharm Terminal
 
-Open PyCharm terminal and run:
+**IMPORTANT: Container Name Conflict Fix**
+
+If you get a "container name already in use" error, run this first:
 
 ```bash
-# Clean any existing containers
-docker-compose down -v
+# Stop existing containers and clean up
+docker-compose down
+docker rm -f job_app_backend job_app_frontend job_app_db
+docker container prune -f
 
+# Or use the provided cleanup script
+chmod +x docker-cleanup.sh
+./docker-cleanup.sh
+```
+
+Then build and start all services:
+
+```bash
 # Build and start all services
 docker-compose up --build
 ```
@@ -88,6 +100,18 @@ docker-compose up --build
 ```
 
 ### 7. Troubleshooting
+
+**Container Name Conflicts (Your Current Issue):**
+```bash
+# Solution 1: Clean up existing containers
+docker-compose down
+docker rm -f job_app_backend job_app_frontend job_app_db
+docker-compose up --build
+
+# Solution 2: Use the cleanup script
+./docker-cleanup.sh
+docker-compose up --build
+```
 
 **Port Conflicts:**
 ```bash
