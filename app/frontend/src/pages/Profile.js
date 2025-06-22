@@ -3,6 +3,7 @@ import api from '../services/api';
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -17,11 +18,28 @@ const Profile = () => {
 
   const fetchProfile = async () => {
     try {
-      const response = await api.get('/user/profile');
-      setProfile(response.data);
+      const [profileResponse, statsResponse, resumesResponse] = await Promise.all([
+        api.get('/user/profile'),
+        api.get('/applications/statistics/summary'),
+        api.get('/resume')
+      ]);
+      
+      console.log('Profile data:', profileResponse.data);
+      console.log('Stats data:', statsResponse.data);
+      console.log('Resumes data:', resumesResponse.data);
+      
+      setProfile(profileResponse.data);
+      
+      // Combine statistics from applications and resumes
+      const combinedStats = {
+        ...statsResponse.data,
+        total_resumes: Array.isArray(resumesResponse.data) ? resumesResponse.data.length : 0
+      };
+      
+      setStats(combinedStats);
       setFormData({
-        username: response.data.username,
-        email: response.data.email
+        username: profileResponse.data.username,
+        email: profileResponse.data.email
       });
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -152,15 +170,18 @@ const Profile = () => {
         <h3>Account Statistics</h3>
         <div className="grid">
           <div className="stat-card">
-            <div className="stat-number">-</div>
+            <div className="stat-number">{stats.total_resumes || 0}</div>
             <div className="stat-label">Total Resumes</div>
           </div>
           <div className="stat-card">
-            <div className="stat-number">-</div>
+            <div className="stat-number">{stats.total_applications || 0}</div>
             <div className="stat-label">Total Applications</div>
           </div>
           <div className="stat-card">
-            <div className="stat-number">-</div>
+            <div className="stat-number">
+              {stats.monthly_applications ? 
+                Object.values(stats.monthly_applications).reduce((sum, count) => sum + count, 0) : 0}
+            </div>
             <div className="stat-label">This Month</div>
           </div>
         </div>
