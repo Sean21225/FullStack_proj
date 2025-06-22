@@ -35,7 +35,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd app/frontend && PORT=3000 BROWSER=none npm start"
+args = "cd app/frontend && npm start"
 waitForPort = 3000
 
 [deployment]
