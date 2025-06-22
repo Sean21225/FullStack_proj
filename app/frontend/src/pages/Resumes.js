@@ -17,10 +17,21 @@ const Resumes = () => {
 
   const fetchResumes = async () => {
     try {
+      console.log('Fetching resumes...');
       const response = await api.get('/resume');
-      setResumes(response.data.items || []);
+      console.log('Resume response:', response.data);
+      
+      // Handle different response formats
+      if (Array.isArray(response.data)) {
+        setResumes(response.data);
+      } else if (response.data.items) {
+        setResumes(response.data.items);
+      } else {
+        setResumes([]);
+      }
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
+      setResumes([]);
     } finally {
       setLoading(false);
     }
