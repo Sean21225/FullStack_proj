@@ -28,12 +28,37 @@ const Resumes = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log('Form data being submitted:', formData);
+    
+    // Validate form data
+    if (!formData.title || formData.title.trim().length < 1) {
+      alert('Resume title is required');
+      return;
+    }
+    
+    if (!formData.content || formData.content.trim().length < 10) {
+      alert('Resume content must be at least 10 characters long');
+      return;
+    }
+    
+    // Prepare clean data for submission
+    const submitData = {
+      title: formData.title.trim(),
+      content: formData.content.trim()
+    };
+    
+    console.log('Submitting data:', submitData);
+    
     try {
+      let response;
       if (editingResume) {
-        await api.put(`/resume/${editingResume.resume_id}`, formData);
+        response = await api.put(`/resume/${editingResume.resume_id}`, submitData);
       } else {
-        await api.post('/resume', formData);
+        response = await api.post('/resume', submitData);
       }
+      
+      console.log('Resume saved successfully:', response.data);
       
       setShowModal(false);
       setEditingResume(null);
@@ -41,6 +66,24 @@ const Resumes = () => {
       fetchResumes();
     } catch (error) {
       console.error('Failed to save resume:', error);
+      console.error('Error response:', error.response);
+      
+      let errorMessage = 'Failed to save resume. Please try again.';
+      
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          errorMessage = error.response.data.detail.map(err => {
+            if (typeof err === 'string') return err;
+            return err.msg || err.message || JSON.stringify(err);
+          }).join(', ');
+        }
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Validation error: Please check your input data.';
+      }
+      
+      alert(errorMessage);
     }
   };
 
