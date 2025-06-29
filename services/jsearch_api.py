@@ -263,10 +263,12 @@ class JSearchService:
                 return []
                 
             jobs = data.get("data", [])
+            logger.info(f"Initial search returned {len(jobs)} jobs for query: {enhanced_query}")
             
-            # If no jobs found for international location, try broader search approaches
-            if not jobs and normalized_location and not self._should_add_experience_to_query(normalized_location):
-                logger.info(f"No local jobs found for {normalized_location}, trying alternative search strategies")
+            # For international locations, always try multiple search strategies for better coverage
+            if normalized_location and not self._should_add_experience_to_query(normalized_location):
+                if len(jobs) < 5:  # If we have fewer than 5 jobs, try to supplement with more
+                    logger.info(f"Limited results for {normalized_location} ({len(jobs)} jobs), trying supplementary search strategies")
                 
                 # Try search without location restriction but with global/international keywords
                 global_params = {
@@ -303,8 +305,19 @@ class JSearchService:
                                 filtered_jobs.append(job)
                         
                         if filtered_jobs:
-                            jobs = filtered_jobs[:10]  # Limit to 10 best matches
-                            logger.info(f"Found {len(jobs)} international/remote opportunities")
+                            # Combine original jobs with supplementary results
+                            combined_jobs = list(jobs) + filtered_jobs
+                            # Remove duplicates based on job_id or title+company
+                            seen = set()
+                            unique_jobs = []
+                            for job in combined_jobs:
+                                job_key = (job.get("job_id", ""), job.get("job_title", ""), job.get("employer_name", ""))
+                                if job_key not in seen:
+                                    seen.add(job_key)
+                                    unique_jobs.append(job)
+                            
+                            jobs = unique_jobs[:10]  # Limit to 10 best matches
+                            logger.info(f"Combined search found {len(jobs)} total opportunities ({len(filtered_jobs)} supplementary)")
             
             # Transform to standardized format and add metadata for international searches
             standardized_jobs = []
