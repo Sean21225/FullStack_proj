@@ -384,7 +384,7 @@ const Resumes = () => {
                   
                   {optimizationResult.score && (
                     <div className="score-section">
-                      <h4>Resume Score: {Math.round(optimizationResult.score * 100)}%</h4>
+                      <h4>Resume Score: {Math.round(optimizationResult.score)}%</h4>
                     </div>
                   )}
                   
