@@ -15,7 +15,7 @@ from schemas import (
     LinkedInCompanyRequest, LinkedInCompanyResponse
 )
 from auth import get_current_active_user
-from services.resume_optimizer import resume_optimizer_service
+from services.openai_resume_optimizer import openai_resume_optimizer_service
 from services.linkedin_scraper import linkedin_scraper_service
 
 router = APIRouter()
@@ -29,11 +29,11 @@ async def optimize_resume(
 ):
     """
     Optimize and tailor resume content using AI service
-    Integrates with external resume optimization API
+    Integrates with OpenAI ChatGPT API
     """
     try:
-        # Call the resume optimizer service
-        optimized_result = resume_optimizer_service.optimize_resume(request)
+        # Call the OpenAI resume optimizer service
+        optimized_result = openai_resume_optimizer_service.optimize_resume(request)
         return optimized_result
         
     except HTTPException:
@@ -56,8 +56,8 @@ async def optimize_resume_legacy(
     Integrates with external resume optimization API
     """
     try:
-        # Call the resume optimizer service
-        optimized_result = resume_optimizer_service.optimize_resume(request)
+        # Call the OpenAI resume optimizer service
+        optimized_result = openai_resume_optimizer_service.optimize_resume(request)
         return optimized_result
         
     except HTTPException:
@@ -93,7 +93,7 @@ async def analyze_resume(
             )
         
         # Analyze the resume content
-        analysis = resume_optimizer_service.analyze_resume(resume.content)
+        analysis = openai_resume_optimizer_service.analyze_resume(resume.content)
         return analysis
         
     except HTTPException:
@@ -188,7 +188,11 @@ async def get_job_keywords(
     Helps users optimize their resume for specific positions
     """
     try:
-        keywords = resume_optimizer_service.get_keywords_for_job(job_title, job_description)
+        # This endpoint is not yet implemented with OpenAI
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Keyword extraction feature is not yet implemented"
+        )
         return {
             "job_title": job_title,
             "recommended_keywords": keywords,
