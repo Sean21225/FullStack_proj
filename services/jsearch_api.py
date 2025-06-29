@@ -80,6 +80,43 @@ class JSearchService:
         
         return experience_mappings.get(experience_level.lower(), "")
     
+    def _should_add_experience_to_query(self, location: Optional[str]) -> bool:
+        """
+        Determine if experience level keywords should be added to the search query
+        Only add for English-speaking regions to avoid reducing results for international searches
+        
+        Args:
+            location: Normalized location string
+            
+        Returns:
+            True if experience keywords should be added to query, False otherwise
+        """
+        if not location:
+            return True  # Default to adding keywords if no location specified
+        
+        location_lower = location.lower()
+        
+        # English-speaking countries/regions where experience keywords work well
+        english_regions = [
+            "united states", "usa", "us", "america",
+            "canada", "uk", "united kingdom", "england", "scotland", "wales",
+            "australia", "new zealand", "ireland", "south africa"
+        ]
+        
+        # US states and major English-speaking cities
+        us_regions = [
+            "new york", "california", "texas", "florida", "washington",
+            "seattle", "san francisco", "los angeles", "chicago", "boston",
+            "atlanta", "denver", "austin", "miami", "philadelphia"
+        ]
+        
+        # Check if location matches English-speaking regions
+        for region in english_regions + us_regions:
+            if region in location_lower:
+                return True
+        
+        return False  # For international locations, rely on post-search filtering only
+    
     def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
         """
         Filter jobs by location relevance to improve search accuracy
@@ -200,8 +237,8 @@ class JSearchService:
             if normalized_location:
                 enhanced_query = f"{query} {normalized_location}"
             
-            # Add experience level keywords to query for better filtering
-            if experience_level:
+            # Add experience level keywords to query only for US/English-speaking regions
+            if experience_level and self._should_add_experience_to_query(normalized_location):
                 experience_keywords = self._get_experience_keywords(experience_level)
                 if experience_keywords:
                     enhanced_query = f"{enhanced_query} {experience_keywords}"
