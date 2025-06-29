@@ -71,12 +71,14 @@ class ResumeOptimizerService:
             score += 30
         elif 200 <= word_count < 300 or 800 < word_count <= 1000:
             score += 20
+        elif word_count < 50:
+            score += 5  # Very short content gets low score
         else:
             score += 10
         
         # Action verbs presence (25% of score)
         action_verb_count = sum(1 for verb in self.action_verbs if verb.lower() in resume_content.lower())
-        score += min(25, action_verb_count * 2)
+        score += min(25, action_verb_count * 3)
         
         # Technical keywords if job description provided (25% of score)
         if job_description:
@@ -89,27 +91,40 @@ class ResumeOptimizerService:
                 field_keywords = self.tech_keywords["software"]
             elif any(word in job_lower for word in ["data", "analyst", "scientist", "analytics"]):
                 field_keywords = self.tech_keywords["data"]
-            elif any(word in job_lower for word in ["marketing", "marketing", "seo", "social"]):
+            elif any(word in job_lower for word in ["marketing", "seo", "social"]):
                 field_keywords = self.tech_keywords["marketing"]
             
             if field_keywords:
                 matching_keywords = sum(1 for keyword in field_keywords if keyword.lower() in resume_lower)
                 score += min(25, matching_keywords * 2)
             else:
-                score += 15  # Base score if no specific field detected
+                score += 10  # Base score if no specific field detected
         else:
-            score += 15
+            score += 10
         
         # Format and structure (20% of score)
         sections = ["experience", "education", "skills", "summary", "objective"]
         section_count = sum(1 for section in sections if section in resume_content.lower())
         score += min(20, section_count * 4)
         
-        return min(100.0, score)
+        return round(min(100.0, max(5.0, score)), 1)
     
     def _generate_suggestions(self, resume_content: str, job_description: Optional[str] = None) -> List[str]:
         """Generate intelligent suggestions for resume improvement"""
         suggestions = []
+        word_count = len(resume_content.split())
+        
+        # Handle very short content differently
+        if word_count < 20:
+            suggestions = [
+                "Your resume is very brief. Consider expanding with specific experience and accomplishments",
+                "Add a professional summary highlighting your strengths and career goals",
+                "Include specific technical skills, tools, or programming languages you know",
+                "Add any relevant education, certifications, or training",
+                "Include measurable achievements from work, projects, or studies",
+                "Structure your resume with clear sections (Summary, Skills, Experience, Education)"
+            ]
+            return suggestions
         
         # Check for weak words
         for weak, strong in self.weak_words.items():
@@ -119,41 +134,43 @@ class ResumeOptimizerService:
         # Check for action verbs
         action_verb_count = sum(1 for verb in self.action_verbs if verb.lower() in resume_content.lower())
         if action_verb_count < 3:
-            suggestions.append("Add more action verbs like 'Developed', 'Implemented', 'Led' to strengthen your accomplishments")
+            suggestions.append("Use more action verbs like 'Developed', 'Implemented', 'Led' to strengthen accomplishments")
         
         # Check length
-        word_count = len(resume_content.split())
         if word_count < 300:
-            suggestions.append("Consider expanding your resume with more details about your accomplishments and skills")
+            suggestions.append("Expand your resume with specific accomplishments, skills, and relevant experience")
         elif word_count > 800:
             suggestions.append("Consider condensing your resume to focus on the most relevant achievements")
         
         # Check for quantified achievements
         if not re.search(r'\d+%|\$\d+|\d+\s+(years?|months?|projects?|users?|clients?)', resume_content):
-            suggestions.append("Add quantified achievements (e.g., 'Increased sales by 25%', 'Managed team of 5 people')")
+            suggestions.append("Add quantified achievements (e.g., 'Increased efficiency by 25%', 'Completed 10+ projects')")
         
-        # Job-specific suggestions
+        # Job-specific suggestions based on description
         if job_description:
             job_lower = job_description.lower()
             resume_lower = resume_content.lower()
             
-            # Technical skills suggestions
             if "python" in job_lower and "python" not in resume_lower:
-                suggestions.append("Consider highlighting Python experience if you have it")
+                suggestions.append("Highlight Python programming experience if you have it")
             if "javascript" in job_lower and "javascript" not in resume_lower:
-                suggestions.append("Consider mentioning JavaScript skills if relevant")
-            if "leadership" in job_lower and "led" not in resume_lower and "managed" not in resume_lower:
-                suggestions.append("Highlight any leadership or management experience")
+                suggestions.append("Mention JavaScript skills if relevant to your background")
+            if "teamwork" in job_lower and not any(word in resume_lower for word in ["team", "collaborate", "group"]):
+                suggestions.append("Emphasize teamwork and collaboration experience")
         
         # Structure suggestions
         if "summary" not in resume_content.lower() and "objective" not in resume_content.lower():
-            suggestions.append("Consider adding a professional summary at the top of your resume")
+            suggestions.append("Add a professional summary at the top highlighting your key strengths")
         
-        return suggestions[:8]  # Limit to most important suggestions
+        return suggestions[:6]  # Limit to most actionable suggestions
     
     def _optimize_content(self, resume_content: str, job_description: Optional[str] = None) -> str:
         """Apply automatic optimizations to resume content"""
-        optimized = resume_content
+        optimized = resume_content.strip()
+        
+        # For very short content, provide a more structured version
+        if len(optimized.split()) < 20:
+            optimized = self._expand_short_content(optimized, job_description)
         
         # Replace weak words with stronger alternatives
         for weak, strong in self.weak_words.items():
@@ -166,6 +183,10 @@ class ResumeOptimizerService:
         
         for line in lines:
             stripped = line.strip()
+            if not stripped:
+                improved_lines.append(line)
+                continue
+                
             # If line starts with - or *, make sure it starts with an action verb
             if stripped.startswith(('- ', '* ', '• ')):
                 content = stripped[2:].strip()
@@ -184,6 +205,48 @@ class ResumeOptimizerService:
                 improved_lines.append(line)
         
         return '\n'.join(improved_lines)
+    
+    def _expand_short_content(self, content: str, job_description: Optional[str] = None) -> str:
+        """Expand very short resume content with suggested structure"""
+        content_lower = content.lower()
+        
+        # Detect if it's about programming/software
+        if any(word in content_lower for word in ["program", "code", "software", "develop"]):
+            return f"""PROFESSIONAL SUMMARY
+Aspiring software developer with foundational programming knowledge and passion for technology.
+
+TECHNICAL SKILLS
+• Programming: {content}
+• Problem-solving and analytical thinking
+• Eager to learn new technologies
+
+EXPERIENCE
+• Self-taught programming fundamentals
+• Completed personal coding projects
+• Developing technical problem-solving skills
+
+EDUCATION
+• Currently expanding programming knowledge
+• Committed to continuous learning in software development"""
+        
+        # Generic professional expansion
+        return f"""PROFESSIONAL SUMMARY
+Motivated professional with diverse skills and strong work ethic.
+
+CORE COMPETENCIES
+• {content}
+• Strong communication and teamwork abilities
+• Problem-solving and analytical thinking
+• Adaptable and quick learner
+
+EXPERIENCE
+• Applied skills in various projects and situations
+• Demonstrated reliability and commitment to excellence
+• Continuously developing professional capabilities
+
+EDUCATION & DEVELOPMENT
+• Committed to ongoing skill development
+• Self-motivated learner with growth mindset"""
     
     def optimize_resume(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
         """
