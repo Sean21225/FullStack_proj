@@ -335,57 +335,86 @@ class JSearchService:
             standardized_jobs = []
             is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
             
-            # For international locations with no results, try remote/global searches
+            # For international locations with no results, try multiple search strategies
             if is_international_location and len(jobs) == 0:
-                logger.info(f"No local jobs found for {normalized_location}. Trying remote and global job searches.")
+                logger.info(f"No local jobs found for {normalized_location}. Trying location-specific search strategies.")
                 
-                # Try searching for remote jobs with the same keywords
-                remote_params = {
-                    "query": f"{query} remote",
-                    "page": "1", 
-                    "num_pages": "1",
-                    "date_posted": date_posted,
-                    "employment_types": employment_types
-                }
+                # Extract country and city from normalized location
+                location_parts = normalized_location.split(", ")
+                city = location_parts[0] if location_parts else normalized_location
+                country = location_parts[1] if len(location_parts) > 1 else ""
                 
-                try:
-                    remote_response = requests.get(url, headers=self.headers, params=remote_params, timeout=30)
-                    remote_response.raise_for_status()
-                    remote_data = remote_response.json()
-                    
-                    if remote_data.get("status") == "OK":
-                        remote_jobs = remote_data.get("data", [])
-                        logger.info(f"Found {len(remote_jobs)} remote jobs as fallback")
+                search_strategies = []
+                
+                # Strategy 1: Search for jobs mentioning the specific location in description
+                search_strategies.append(f'{query} "{city}"')
+                if country:
+                    search_strategies.append(f'{query} "{country}"')
+                
+                # Strategy 2: Search for remote jobs that mention the location
+                search_strategies.append(f'{query} remote "{city}"')
+                
+                # Strategy 3: Search for international/global positions
+                search_strategies.append(f'{query} international remote')
+                search_strategies.append(f'{query} global remote')
+                
+                all_found_jobs = []
+                
+                for strategy_query in search_strategies:
+                    try:
+                        strategy_params = {
+                            "query": strategy_query,
+                            "page": "1", 
+                            "num_pages": "1",
+                            "date_posted": date_posted,
+                            "employment_types": employment_types
+                        }
                         
-                        # Filter for truly remote positions
-                        filtered_remote_jobs = []
-                        for job in remote_jobs:
-                            job_desc = ((job.get("job_description") or "") + " " + (job.get("job_title") or "")).lower()
-                            job_location = ((job.get("job_city") or "") + " " + (job.get("job_state") or "")).lower()
-                            
-                            is_remote = (job.get("job_is_remote", False) or 
-                                       "remote" in job_desc or 
-                                       "work from home" in job_desc or
-                                       "wfh" in job_desc or
-                                       "anywhere" in job_location or
-                                       "worldwide" in job_location)
-                            
-                            if is_remote:
-                                filtered_remote_jobs.append(job)
+                        logger.info(f"Trying search strategy: {strategy_query}")
                         
-                        if filtered_remote_jobs:
-                            jobs = filtered_remote_jobs[:10]  # Limit to 10 remote jobs
-                            logger.info(f"Using {len(jobs)} filtered remote jobs for international location")
-                        else:
-                            # If no good remote jobs, use all remote jobs returned
-                            jobs = remote_jobs[:10]
-                            logger.info(f"Using {len(jobs)} general remote jobs as fallback")
+                        strategy_response = requests.get(url, headers=self.headers, params=strategy_params, timeout=30)
+                        strategy_response.raise_for_status()
+                        strategy_data = strategy_response.json()
+                        
+                        if strategy_data.get("status") == "OK":
+                            strategy_jobs = strategy_data.get("data", [])
                             
-                except Exception as e:
-                    logger.warning(f"Remote job search failed: {str(e)}")
+                            # Filter jobs that are relevant to the location
+                            for job in strategy_jobs:
+                                job_desc = ((job.get("job_description") or "") + " " + (job.get("job_title") or "")).lower()
+                                job_location = ((job.get("job_city") or "") + " " + (job.get("job_state") or "") + " " + (job.get("job_country") or "")).lower()
+                                
+                                # Check if job mentions the target location or is remote-friendly
+                                location_mentioned = (city.lower() in job_desc or 
+                                                    city.lower() in job_location or
+                                                    (country and country.lower() in job_desc) or
+                                                    (country and country.lower() in job_location))
+                                
+                                is_remote_friendly = (job.get("job_is_remote", False) or 
+                                                   "remote" in job_desc or 
+                                                   "work from home" in job_desc or
+                                                   "international" in job_desc or
+                                                   "global" in job_desc or
+                                                   "worldwide" in job_desc)
+                                
+                                if location_mentioned or is_remote_friendly:
+                                    # Avoid duplicates
+                                    job_id = job.get("job_id", "")
+                                    if not any(existing_job.get("job_id") == job_id for existing_job in all_found_jobs):
+                                        all_found_jobs.append(job)
+                            
+                            if len(all_found_jobs) >= 10:  # Stop when we have enough jobs
+                                break
+                                
+                    except Exception as e:
+                        logger.warning(f"Search strategy '{strategy_query}' failed: {str(e)}")
+                        continue
                 
-                # If still no results, return empty with guidance
-                if len(jobs) == 0:
+                if all_found_jobs:
+                    jobs = all_found_jobs[:10]  # Limit to 10 jobs
+                    logger.info(f"Found {len(jobs)} location-relevant jobs using search strategies")
+                else:
+                    logger.info("No location-relevant jobs found with any search strategy")
                     return []
             
             for job in jobs:
