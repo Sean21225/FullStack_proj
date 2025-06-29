@@ -7,6 +7,8 @@ import Signup from './pages/Signup';
 import Applications from './pages/Applications';
 import Resumes from './pages/Resumes';
 import Profile from './pages/Profile';
+import JobSearchPage from './pages/JobSearch';
+import CompanySearchPage from './pages/CompanySearch';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -39,6 +41,8 @@ function AppContent() {
         <Route path="/applications" element={user ? <Applications /> : <Navigate to="/login" />} />
         <Route path="/resumes" element={user ? <Resumes /> : <Navigate to="/login" />} />
         <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
+        <Route path="/job-search" element={user ? <JobSearchPage /> : <Navigate to="/login" />} />
+        <Route path="/company-search" element={user ? <CompanySearchPage /> : <Navigate to="/login" />} />
         <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
       </Routes>
     </>

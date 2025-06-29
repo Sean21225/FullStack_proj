@@ -36,4 +36,40 @@ api.interceptors.response.use(
   }
 );
 
+// LinkedIn Services API calls
+export const linkedinService = {
+  // Search for jobs on LinkedIn
+  searchJobs: async (params) => {
+    const { keywords, location, experience_level, limit = 10 } = params;
+    const queryParams = new URLSearchParams({
+      keywords,
+      limit: limit.toString(),
+      ...(location && { location }),
+      ...(experience_level && { experience_level })
+    });
+    
+    const response = await api.get(`/services/api/suggestions/jobs?${queryParams}`);
+    return response.data;
+  },
+
+  // Get company information
+  getCompanyInfo: async (companyName) => {
+    const queryParams = new URLSearchParams({
+      company_name: companyName
+    });
+    
+    const response = await api.get(`/services/api/suggestions/companies?${queryParams}`);
+    return response.data;
+  },
+
+  // Get personalized job suggestions based on skills
+  getPersonalizedJobs: async (skills, location = null) => {
+    const response = await api.post('/services/api/personalized/jobs', {
+      skills,
+      location
+    });
+    return response.data;
+  }
+};
+
 export default api;
