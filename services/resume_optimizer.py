@@ -78,7 +78,7 @@ class ResumeOptimizerService:
         
         # Action verbs presence (25% of score)
         action_verb_count = sum(1 for verb in self.action_verbs if verb.lower() in resume_content.lower())
-        score += min(25, action_verb_count * 3)
+        score += min(25, action_verb_count * 2)  # Reduced multiplier
         
         # Technical keywords if job description provided (25% of score)
         if job_description:
@@ -96,18 +96,20 @@ class ResumeOptimizerService:
             
             if field_keywords:
                 matching_keywords = sum(1 for keyword in field_keywords if keyword.lower() in resume_lower)
-                score += min(25, matching_keywords * 2)
+                score += min(25, matching_keywords * 1.5)  # Reduced multiplier
             else:
-                score += 10  # Base score if no specific field detected
+                score += 8  # Base score if no specific field detected
         else:
-            score += 10
+            score += 8
         
         # Format and structure (20% of score)
         sections = ["experience", "education", "skills", "summary", "objective"]
         section_count = sum(1 for section in sections if section in resume_content.lower())
-        score += min(20, section_count * 4)
+        score += min(20, section_count * 3)  # Reduced multiplier
         
-        return round(min(100.0, max(5.0, score)), 1)
+        # Ensure score is always between 5 and 100
+        final_score = max(5.0, min(100.0, score))
+        return round(final_score, 1)
     
     def _generate_suggestions(self, resume_content: str, job_description: Optional[str] = None) -> List[str]:
         """Generate intelligent suggestions for resume improvement"""
@@ -237,23 +239,35 @@ EDUCATION & LEARNING
 • Studying software development concepts and methodologies"""
         
         # Generic professional expansion
+        # Clean up the content for better presentation
+        cleaned_content = original_content.replace('\n', ' ').strip()
+        content_words = cleaned_content.split()
+        
+        # Create a more professional summary based on content
+        if len(content_words) > 3:
+            main_interest = ' '.join(content_words[:4])
+            skills_focus = ' '.join(content_words[4:]) if len(content_words) > 4 else "professional development"
+        else:
+            main_interest = cleaned_content
+            skills_focus = "professional growth"
+        
         return f"""PROFESSIONAL SUMMARY
-Motivated individual with a strong desire to learn and contribute. Demonstrates {original_content.lower()} along with excellent work ethic and commitment to professional growth.
+Motivated professional with experience in {main_interest} and commitment to {skills_focus}. Demonstrates strong work ethic and dedication to continuous learning and professional excellence.
 
 CORE STRENGTHS
-• {original_content}
+• {main_interest.title()}
 • Strong communication and interpersonal skills
 • Problem-solving and analytical thinking
 • Adaptable and eager to take on new challenges
 
 EXPERIENCE & BACKGROUND
-• Applied personal skills in various situations and projects  
-• Demonstrated reliability and attention to detail
+• Applied skills in {main_interest} through various projects and situations
+• Demonstrated reliability and attention to detail in work
 • Actively seeking opportunities to expand professional capabilities
-• Committed to delivering quality work and continuous improvement
+• Committed to delivering quality results and continuous improvement
 
-PERSONAL DEVELOPMENT
-• Self-motivated learner with genuine interest in professional growth
+PROFESSIONAL DEVELOPMENT
+• Self-motivated learner with genuine interest in {skills_focus}
 • Open to feedback and dedicated to skill enhancement
 • Strong work ethic and positive attitude toward challenges"""
     
