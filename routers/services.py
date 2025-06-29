@@ -127,6 +127,41 @@ async def get_job_suggestions(
             num_pages=1  # Limit to first page for now
         )
         
+        # Check if this is an international location with no results
+        if not jobs and location:
+            # Check if location is non-US
+            location_lower = location.lower().strip()
+            international_locations = [
+                'israel', 'tel aviv', 'jerusalem', 'haifa',
+                'germany', 'berlin', 'munich', 'hamburg',
+                'uk', 'london', 'manchester', 'birmingham',
+                'france', 'paris', 'lyon', 'marseille',
+                'netherlands', 'amsterdam', 'rotterdam',
+                'spain', 'madrid', 'barcelona',
+                'italy', 'rome', 'milan',
+                'japan', 'tokyo', 'osaka',
+                'singapore', 'hong kong'
+            ]
+            
+            is_international = any(loc in location_lower for loc in international_locations)
+            
+            if is_international:
+                # Get location-specific guidance from jsearch service
+                guidance = jsearch_service._get_location_specific_guidance(location, keywords)
+                
+                # Return a single guidance item instead of empty results
+                return [{
+                    "title": f"Job Search Guidance for {location}",
+                    "company": "Local Job Boards & Resources",
+                    "location": location,
+                    "description": guidance,
+                    "url": "https://www.linkedin.com/jobs/",
+                    "posted_date": "",
+                    "employment_type": "guidance",
+                    "is_remote": False,
+                    "source": "guidance"
+                }]
+        
         # Limit results as requested
         limited_jobs = jobs[:limit] if jobs else []
         return limited_jobs

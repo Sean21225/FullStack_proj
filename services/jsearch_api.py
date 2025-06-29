@@ -335,10 +335,56 @@ class JSearchService:
             standardized_jobs = []
             is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
             
-            # For international locations with no results, return empty instead of fallback searches
+            # For international locations with no results, try remote/global searches
             if is_international_location and len(jobs) == 0:
-                logger.info(f"No local jobs found for {normalized_location}. API has limited international coverage.")
-                return []  # Return empty results - no fallback searches
+                logger.info(f"No local jobs found for {normalized_location}. Trying remote and global job searches.")
+                
+                # Try searching for remote jobs with the same keywords
+                remote_params = {
+                    "query": f"{query} remote",
+                    "page": "1", 
+                    "num_pages": "1",
+                    "date_posted": date_posted,
+                    "employment_types": employment_types
+                }
+                
+                try:
+                    remote_response = requests.get(url, headers=self.headers, params=remote_params, timeout=30)
+                    remote_response.raise_for_status()
+                    remote_data = remote_response.json()
+                    
+                    if remote_data.get("status") == "OK":
+                        remote_jobs = remote_data.get("data", [])
+                        logger.info(f"Found {len(remote_jobs)} remote jobs as fallback")
+                        
+                        # Filter for truly remote positions
+                        filtered_remote_jobs = []
+                        for job in remote_jobs:
+                            job_desc = (job.get("job_description", "") + " " + job.get("job_title", "")).lower()
+                            job_location = (job.get("job_city", "") + " " + job.get("job_state", "")).lower()
+                            
+                            is_remote = (job.get("job_is_remote", False) or 
+                                       "remote" in job_desc or 
+                                       "work from home" in job_desc or
+                                       "wfh" in job_desc or
+                                       "anywhere" in job_location or
+                                       "worldwide" in job_location)
+                            
+                            if is_remote:
+                                filtered_remote_jobs.append(job)
+                        
+                        if filtered_remote_jobs:
+                            jobs = filtered_remote_jobs[:10]  # Limit to 10 remote jobs
+                            logger.info(f"Using {len(jobs)} filtered remote jobs for international location")
+                        else:
+                            logger.info("No suitable remote jobs found")
+                            
+                except Exception as e:
+                    logger.warning(f"Remote job search failed: {str(e)}")
+                
+                # If still no results, return empty with guidance
+                if len(jobs) == 0:
+                    return []
             
             for job in jobs:
                 # Build comprehensive location string for better filtering
