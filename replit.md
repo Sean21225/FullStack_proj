@@ -144,6 +144,11 @@ A complete full-stack job application management platform with FastAPI backend a
 - Implemented fallback system for international locations to show remote opportunities
 - Added experience level filtering that works for US locations and uses post-search filtering for international
 - System now provides informative messages when job coverage is limited for specific regions
+- **June 29, 2025**: Enhanced international job search with comprehensive remote job fallback
+- Added automatic remote job searching when no local international results found
+- Improved location detection for international cities and countries (Tel Aviv, Berlin, London, etc.)
+- Created helpful job search guidance with local job boards and region-specific tips
+- Fixed frontend workflow configuration to properly serve React app on port 5000
 
 ## User Preferences
 
