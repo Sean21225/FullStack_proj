@@ -32,7 +32,9 @@ class FreeResumeOptimizer:
             "software": ["python", "javascript", "react", "node.js", "sql", "git", "api", "aws", "docker"],
             "data": ["sql", "python", "excel", "tableau", "analytics", "statistics", "machine learning"],
             "management": ["leadership", "project management", "agile", "scrum", "team", "strategy"],
-            "marketing": ["seo", "social media", "content", "campaigns", "analytics", "branding"]
+            "marketing": ["seo", "social media", "content", "campaigns", "analytics", "branding"],
+            "architecture": ["system design", "microservices", "scalability", "cloud architecture", "devops", "kubernetes", "terraform", "ci/cd", "architecture patterns", "enterprise architecture"],
+            "engineering": ["software engineering", "technical leadership", "code review", "architecture design", "system optimization", "performance tuning"]
         }
         
         self.common_improvements = [
@@ -51,8 +53,44 @@ class FreeResumeOptimizer:
         Optimize resume content using rule-based analysis
         """
         try:
-            resume_content = request.resume_content
+            resume_content = request.resume_content.strip()
             job_description = request.job_description or ""
+            
+            # Validate input content
+            if not resume_content or len(resume_content) < 10:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Please provide a valid resume with at least 10 characters of meaningful content."
+                )
+            
+            # Check for random/nonsensical input (like testing text)
+            words = resume_content.split()
+            if len(words) < 3:
+                return ResumeOptimizationResponse(
+                    optimized_content="⚠️ Test input detected. Please provide a real resume with your name, experience, education, and skills for optimization.",
+                    suggestions=[
+                        "Replace test content with your actual resume",
+                        "Include your name and contact information",
+                        "Add work experience with specific achievements",
+                        "List your education and relevant skills",
+                        "Use professional language and formatting"
+                    ],
+                    score=0.0
+                )
+            
+            # Check for repetitive characters (testing input)
+            if any(len(set(word)) < 3 and len(word) > 5 for word in words[:3]):
+                return ResumeOptimizationResponse(
+                    optimized_content="🧪 Testing mode detected!\n\nFor a real optimization, please provide:\n• Your name and contact information\n• Work experience with achievements\n• Education background\n• Relevant skills\n• Professional accomplishments",
+                    suggestions=[
+                        "Replace test input with real resume content",
+                        "Add quantifiable achievements and results",
+                        "Include specific job titles and companies",
+                        "List technical skills relevant to your field",
+                        "Format content professionally with bullet points"
+                    ],
+                    score=0.0
+                )
             
             # Analyze current resume
             analysis = self._analyze_resume_content(resume_content)
@@ -128,6 +166,9 @@ class FreeResumeOptimizer:
 
     def _optimize_content(self, content: str, job_description: str, analysis: Dict[str, Any]) -> str:
         """Generate optimized resume content"""
+        if not content or len(content.strip()) < 5:
+            return "Please provide a valid resume content to optimize."
+            
         lines = content.split('\n')
         optimized_lines = []
         
@@ -221,9 +262,15 @@ class FreeResumeOptimizer:
         """Calculate resume quality score"""
         score = 0.0
         
-        # Base score for having content
-        if analysis["word_count"] > 100:
+        # Check for valid content first
+        if analysis["word_count"] < 5:
+            return 0.0
+        
+        # Base score for having meaningful content
+        if analysis["word_count"] > 20:
             score += 20
+        elif analysis["word_count"] > 10:
+            score += 10
         
         # Action verbs bonus
         score += min(analysis["has_action_verbs"] * 5, 25)
