@@ -59,6 +59,29 @@ class JSearchService:
         location_lower = location.lower()
         return location_mappings.get(location_lower, location)
     
+    def _is_us_location(self, location: str) -> bool:
+        """
+        Check if a location is likely in the US
+        
+        Args:
+            location: Location string to check
+            
+        Returns:
+            True if location appears to be US-based
+        """
+        if not location:
+            return False
+            
+        location_lower = location.lower()
+        us_indicators = [
+            ', ny', ', ca', ', tx', ', fl', ', il', ', pa', ', oh', ', ga', ', nc', ', mi',
+            'new york', 'california', 'texas', 'florida', 'washington dc', 'chicago',
+            'los angeles', 'san francisco', 'boston', 'seattle', 'atlanta', 'miami',
+            'united states', 'usa', 'us'
+        ]
+        
+        return any(indicator in location_lower for indicator in us_indicators)
+    
     def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
         """
         Filter jobs by location relevance to improve search accuracy
@@ -188,6 +211,7 @@ class JSearchService:
             
             logger.info(f"Searching jobs with enhanced query: {enhanced_query}")
             
+            # First try with location-specific query
             response = requests.get(url, headers=self.headers, params=params, timeout=30)
             response.raise_for_status()
             
@@ -198,6 +222,29 @@ class JSearchService:
                 return []
                 
             jobs = data.get("data", [])
+            
+            # If no results for international location, try with remote/global search
+            if len(jobs) == 0 and location and normalized_location and not self._is_us_location(normalized_location):
+                logger.info(f"No results for {normalized_location}, trying remote/global search...")
+                
+                # Try searching for remote jobs in the same field
+                remote_params = {
+                    "query": f"{query} remote",
+                    "page": "1", 
+                    "num_pages": str(num_pages),
+                    "date_posted": date_posted,
+                    "employment_types": employment_types
+                }
+                
+                remote_response = requests.get(url, headers=self.headers, params=remote_params, timeout=30)
+                remote_response.raise_for_status()
+                remote_data = remote_response.json()
+                
+                if remote_data.get("status") == "OK":
+                    remote_jobs = remote_data.get("data", [])
+                    if remote_jobs:
+                        logger.info(f"Found {len(remote_jobs)} remote jobs as fallback")
+                        jobs = remote_jobs
             
             # Transform to standardized format
             standardized_jobs = []
