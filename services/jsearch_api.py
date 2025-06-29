@@ -335,29 +335,55 @@ class JSearchService:
             standardized_jobs = []
             is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
             
-            # Add location-specific guidance for international locations with no results
-            if is_international_location and len(standardized_jobs) == 0:
-                guidance = self._get_location_specific_guidance(normalized_location, query)
-                info_job = {
-                    "title": f"Job Search Resources for {normalized_location}",
-                    "company": "Local Job Market Guide",
-                    "location": normalized_location,
-                    "city": "",
-                    "state": "",
-                    "country": "",
-                    "description": guidance,
-                    "url": "",
-                    "posted_date": "",
-                    "employment_type": "Resource Guide",
-                    "salary_min": None,
-                    "salary_max": None,
-                    "currency": None,
-                    "is_remote": False,
-                    "job_id": "local_guide",
-                    "source": "location_guide"
+            # For international locations with no results, try a broader search without location restriction
+            # to find remote jobs that might be relevant
+            if is_international_location and len(jobs) == 0:
+                logger.info(f"No jobs found for {normalized_location}, trying global remote search")
+                
+                # Try a global search for remote positions in the same field
+                global_params = {
+                    "query": f"remote {query}",
+                    "page": "1",
+                    "num_pages": "1",
+                    "date_posted": date_posted,
+                    "employment_types": employment_types
                 }
-                standardized_jobs.append(info_job)
-                logger.info(f"Added location-specific guidance for {normalized_location}")
+                
+                try:
+                    global_response = requests.get(url, headers=self.headers, params=global_params, timeout=30)
+                    if global_response.status_code == 200:
+                        global_data = global_response.json()
+                        if global_data.get("status") == "OK":
+                            remote_jobs = global_data.get("data", [])
+                            
+                            # Filter for truly international remote opportunities
+                            filtered_remote = []
+                            for job in remote_jobs:
+                                job_title = (job.get("job_title", "") or "").lower()
+                                job_desc = (job.get("job_description", "") or "").lower()
+                                is_remote = job.get("job_is_remote", False)
+                                
+                                # Look for international remote indicators
+                                international_keywords = [
+                                    "worldwide", "global", "international", "any location",
+                                    "europe", "european union", "eu", "emea"
+                                ]
+                                
+                                has_international_scope = any(keyword in job_title or keyword in job_desc 
+                                                             for keyword in international_keywords)
+                                
+                                if is_remote and (has_international_scope or "remote" in job_title):
+                                    filtered_remote.append(job)
+                            
+                            if filtered_remote:
+                                jobs = filtered_remote[:5]  # Limit to 5 best remote matches
+                                logger.info(f"Found {len(jobs)} relevant international remote opportunities")
+                            else:
+                                logger.info(f"No relevant international opportunities found for {normalized_location}")
+                                return []  # Return empty results instead of guidance
+                except Exception as e:
+                    logger.error(f"Error in global remote search: {str(e)}")
+                    return []
             
             for job in jobs:
                 # Build comprehensive location string for better filtering
