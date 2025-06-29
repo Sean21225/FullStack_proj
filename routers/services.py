@@ -21,6 +21,30 @@ from services.linkedin_scraper import linkedin_scraper_service
 router = APIRouter()
 
 
+@router.post("/optimize-resume", response_model=ResumeOptimizationResponse)
+async def optimize_resume_frontend(
+    request: ResumeOptimizationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Optimize and tailor resume content - Frontend endpoint
+    This is the endpoint called by the React frontend
+    """
+    try:
+        # Call the resume optimizer service
+        optimized_result = resume_optimizer_service.optimize_resume(request)
+        return optimized_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Resume optimization failed: {str(e)}"
+        )
+
+
 @router.post("/api/optimizer/tailor", response_model=ResumeOptimizationResponse)
 async def optimize_resume(
     request: ResumeOptimizationRequest,
