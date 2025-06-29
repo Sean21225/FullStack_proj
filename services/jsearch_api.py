@@ -360,8 +360,8 @@ class JSearchService:
                         # Filter for truly remote positions
                         filtered_remote_jobs = []
                         for job in remote_jobs:
-                            job_desc = (job.get("job_description", "") + " " + job.get("job_title", "")).lower()
-                            job_location = (job.get("job_city", "") + " " + job.get("job_state", "")).lower()
+                            job_desc = ((job.get("job_description") or "") + " " + (job.get("job_title") or "")).lower()
+                            job_location = ((job.get("job_city") or "") + " " + (job.get("job_state") or "")).lower()
                             
                             is_remote = (job.get("job_is_remote", False) or 
                                        "remote" in job_desc or 
@@ -377,7 +377,9 @@ class JSearchService:
                             jobs = filtered_remote_jobs[:10]  # Limit to 10 remote jobs
                             logger.info(f"Using {len(jobs)} filtered remote jobs for international location")
                         else:
-                            logger.info("No suitable remote jobs found")
+                            # If no good remote jobs, use all remote jobs returned
+                            jobs = remote_jobs[:10]
+                            logger.info(f"Using {len(jobs)} general remote jobs as fallback")
                             
                 except Exception as e:
                     logger.warning(f"Remote job search failed: {str(e)}")
