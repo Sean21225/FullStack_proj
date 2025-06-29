@@ -134,6 +134,11 @@ A complete full-stack job application management platform with FastAPI backend a
 - JSearch API now provides real-time job data from LinkedIn, Indeed, Glassdoor, ZipRecruiter, and other major job sites
 - Job search and company lookup features fully functional with live data
 - Users can now search for jobs with location filters and get authentic job postings with apply links
+- **June 29, 2025**: Fixed location-based job search functionality
+- Improved location filtering by including location in the search query instead of separate parameter
+- Added location normalization for common cities (Tel Aviv, New York, Berlin, etc.)
+- Implemented priority-based filtering that shows location-relevant jobs first
+- Location searches now return properly filtered results for specified cities and countries
 
 ## User Preferences
 
