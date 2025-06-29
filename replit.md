@@ -37,8 +37,9 @@ A complete full-stack job application management platform with FastAPI backend a
 - **Services Router** (`/services`): External service integrations
 
 ### External Services
-- **Resume Optimizer**: AI-powered resume tailoring and optimization
-- **LinkedIn Scraper**: Job and company data extraction from LinkedIn
+- **Resume Optimizer**: AI-powered resume tailoring and optimization (free, rule-based service)
+- **JSearch API**: Real-time job search across LinkedIn, Indeed, Glassdoor, ZipRecruiter, and other major job sites via RapidAPI
+- **Company Lookup**: Company information extraction based on job posting data
 
 ### Security Features
 - JWT token authentication with configurable expiration
@@ -128,6 +129,11 @@ A complete full-stack job application management platform with FastAPI backend a
 - **June 29, 2025**: Final fixes to resume optimization scoring display
 - Corrected frontend score calculation to show proper percentages (13% instead of 1300%)
 - Improved content expansion formatting for better professional presentation
+- **June 29, 2025**: Successfully integrated JSearch API for comprehensive job search functionality
+- Replaced ScrapingDog with JSearch API from RapidAPI for better reliability and data coverage
+- JSearch API now provides real-time job data from LinkedIn, Indeed, Glassdoor, ZipRecruiter, and other major job sites
+- Job search and company lookup features fully functional with live data
+- Users can now search for jobs with location filters and get authentic job postings with apply links
 
 ## User Preferences
 
