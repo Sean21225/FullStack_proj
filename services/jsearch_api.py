@@ -117,6 +117,69 @@ class JSearchService:
         
         return False  # For international locations, rely on post-search filtering only
     
+    def _get_location_specific_guidance(self, location: str, query: str) -> str:
+        """
+        Provide location-specific job search guidance and resources
+        
+        Args:
+            location: The location being searched
+            query: The job search query
+            
+        Returns:
+            Tailored guidance for job searching in that location
+        """
+        location_lower = location.lower()
+        
+        # Define region-specific job boards and guidance
+        guidance_map = {
+            "israel": {
+                "boards": ["JobMaster.co.il", "AllJobs.co.il", "Drushim.co.il", "LinkedIn Israel"],
+                "tips": "Israel has a thriving tech scene, especially in Tel Aviv. Many international companies have R&D centers here."
+            },
+            "tel aviv": {
+                "boards": ["JobMaster.co.il", "AllJobs.co.il", "Drushim.co.il", "LinkedIn Israel"],
+                "tips": "Tel Aviv is Israel's tech capital with many startups and international companies. Check company websites directly."
+            },
+            "france": {
+                "boards": ["Indeed France", "Monster.fr", "LeBonCoin Emploi", "LinkedIn France"],
+                "tips": "France has strong employment protections. Consider learning French for better opportunities."
+            },
+            "paris": {
+                "boards": ["Indeed France", "Monster.fr", "LeBonCoin Emploi", "LinkedIn France", "Welcome to the Jungle"],
+                "tips": "Paris has a growing tech ecosystem. Many international companies have European headquarters here."
+            },
+            "germany": {
+                "boards": ["StepStone.de", "Indeed Germany", "Xing", "LinkedIn Germany"],
+                "tips": "Germany has a strong engineering culture. German language skills are often required."
+            },
+            "berlin": {
+                "boards": ["StepStone.de", "Indeed Germany", "Xing", "LinkedIn Germany", "TheLocal.de Jobs"],
+                "tips": "Berlin is a major tech hub with many English-speaking opportunities, especially in startups."
+            },
+            "uk": {
+                "boards": ["Indeed UK", "Reed.co.uk", "Totaljobs.com", "LinkedIn UK"],
+                "tips": "UK has a mature tech sector. Right to work documentation is essential post-Brexit."
+            },
+            "london": {
+                "boards": ["Indeed UK", "Reed.co.uk", "Totaljobs.com", "LinkedIn UK", "CWJobs"],
+                "tips": "London is a global financial and tech center with high salaries but also high living costs."
+            }
+        }
+        
+        # Find matching guidance
+        guidance_info = None
+        for region, info in guidance_map.items():
+            if region in location_lower:
+                guidance_info = info
+                break
+        
+        if not guidance_info:
+            # Default guidance for other international locations
+            return f"Our database focuses on US markets with limited {location} coverage. For {query} positions in {location}, try: 1) LinkedIn with location filters, 2) Local job boards in your region, 3) Company websites directly, 4) Professional networks and referrals, 5) Government employment services in your country."
+        
+        boards_list = ", ".join(guidance_info["boards"])
+        return f"For {query} positions in {location}, recommended job boards: {boards_list}. Local insight: {guidance_info['tips']} Also consider networking events, company career pages, and professional associations in your field."
+    
     def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
         """
         Filter jobs by location relevance to improve search accuracy
@@ -265,87 +328,36 @@ class JSearchService:
             jobs = data.get("data", [])
             logger.info(f"Initial search returned {len(jobs)} jobs for query: {enhanced_query}")
             
-            # For international locations, always try multiple search strategies for better coverage
-            if normalized_location and not self._should_add_experience_to_query(normalized_location):
-                if len(jobs) < 5:  # If we have fewer than 5 jobs, try to supplement with more
-                    logger.info(f"Limited results for {normalized_location} ({len(jobs)} jobs), trying supplementary search strategies")
-                
-                # Try search without location restriction but with global/international keywords
-                global_params = {
-                    "query": f"{query} international global remote worldwide",
-                    "page": "1", 
-                    "num_pages": str(num_pages),
-                    "date_posted": date_posted,
-                    "employment_types": employment_types
-                }
-                
-                global_response = requests.get(url, headers=self.headers, params=global_params, timeout=30)
-                if global_response.status_code == 200:
-                    global_data = global_response.json()
-                    if global_data.get("status") == "OK":
-                        potential_jobs = global_data.get("data", [])
-                        
-                        # Filter for truly remote or international opportunities
-                        filtered_jobs = []
-                        for job in potential_jobs:
-                            job_title = (job.get("job_title", "") or "").lower()
-                            job_desc = (job.get("job_description", "") or "").lower()
-                            is_remote = job.get("job_is_remote", False)
-                            
-                            # Look for indicators of international/remote opportunities
-                            international_indicators = [
-                                "remote", "worldwide", "global", "international", 
-                                "anywhere", "work from home", "distributed", "virtual"
-                            ]
-                            
-                            is_international = any(indicator in job_title or indicator in job_desc 
-                                                 for indicator in international_indicators)
-                            
-                            if is_remote or is_international:
-                                filtered_jobs.append(job)
-                        
-                        if filtered_jobs:
-                            # Combine original jobs with supplementary results
-                            combined_jobs = list(jobs) + filtered_jobs
-                            # Remove duplicates based on job_id or title+company
-                            seen = set()
-                            unique_jobs = []
-                            for job in combined_jobs:
-                                job_key = (job.get("job_id", ""), job.get("job_title", ""), job.get("employer_name", ""))
-                                if job_key not in seen:
-                                    seen.add(job_key)
-                                    unique_jobs.append(job)
-                            
-                            jobs = unique_jobs[:10]  # Limit to 10 best matches
-                            logger.info(f"Combined search found {len(jobs)} total opportunities ({len(filtered_jobs)} supplementary)")
+            # For international locations with no results, don't try fallback searches
+            # Instead, we'll provide helpful guidance in the results section
             
             # Transform to standardized format and add metadata for international searches
             standardized_jobs = []
             is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
             
-            # Add informational guidance for international locations with limited results
-            if is_international_location and len(standardized_jobs) < 3:
-                # Create an informational "job" entry to guide users
+            # Add location-specific guidance for international locations with no results
+            if is_international_location and len(standardized_jobs) == 0:
+                guidance = self._get_location_specific_guidance(normalized_location, query)
                 info_job = {
-                    "title": f"Job Search Tips for {normalized_location}",
-                    "company": "Job Search Guidance",
+                    "title": f"Job Search Resources for {normalized_location}",
+                    "company": "Local Job Market Guide",
                     "location": normalized_location,
                     "city": "",
                     "state": "",
                     "country": "",
-                    "description": f"Our current job database focuses primarily on US markets with limited coverage for {normalized_location}. For better results in your region, we recommend: 1) Use local job boards like Jobs.ch (Switzerland), StepStone (Germany), or LinkedIn for international opportunities, 2) Search without location to find remote positions that accept international candidates, 3) Try broader search terms like your profession + 'remote' or 'international', 4) Consider major European cities like London, Berlin, or Amsterdam which may have better coverage.",
+                    "description": guidance,
                     "url": "",
                     "posted_date": "",
-                    "employment_type": "Guidance",
+                    "employment_type": "Resource Guide",
                     "salary_min": None,
                     "salary_max": None,
                     "currency": None,
                     "is_remote": False,
-                    "job_id": "guidance",
-                    "source": "system_guidance"
+                    "job_id": "local_guide",
+                    "source": "location_guide"
                 }
-                standardized_jobs.insert(0, info_job)  # Put guidance at the top
-                logger.info(f"Added guidance message for limited coverage in {normalized_location}")
+                standardized_jobs.append(info_job)
+                logger.info(f"Added location-specific guidance for {normalized_location}")
             
             for job in jobs:
                 # Build comprehensive location string for better filtering
