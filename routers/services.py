@@ -15,49 +15,25 @@ from schemas import (
     LinkedInCompanyRequest, LinkedInCompanyResponse
 )
 from auth import get_current_active_user
-from services.free_resume_optimizer import free_resume_optimizer_service
+from services.resume_optimizer import resume_optimizer_service
 from services.linkedin_scraper import linkedin_scraper_service
 
 router = APIRouter()
 
 
-@router.post("/optimize-resume", response_model=ResumeOptimizationResponse)
+@router.post("/api/optimizer/tailor", response_model=ResumeOptimizationResponse)
 async def optimize_resume(
     request: ResumeOptimizationRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
-    Optimize and tailor resume content using free AI service
-    Uses rule-based analysis with no API costs
-    """
-    try:
-        # Call the free resume optimizer service
-        optimized_result = free_resume_optimizer_service.optimize_resume(request)
-        return optimized_result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Resume optimization failed: {str(e)}"
-        )
-
-
-@router.post("/api/optimizer/tailor", response_model=ResumeOptimizationResponse)
-async def optimize_resume_legacy(
-    request: ResumeOptimizationRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Legacy endpoint - Optimize and tailor resume content using AI service
+    Optimize and tailor resume content using AI service
     Integrates with external resume optimization API
     """
     try:
-        # Call the free resume optimizer service
-        optimized_result = free_resume_optimizer_service.optimize_resume(request)
+        # Call the resume optimizer service
+        optimized_result = resume_optimizer_service.optimize_resume(request)
         return optimized_result
         
     except HTTPException:
@@ -93,7 +69,7 @@ async def analyze_resume(
             )
         
         # Analyze the resume content
-        analysis = free_resume_optimizer_service.analyze_resume(resume.content)
+        analysis = resume_optimizer_service.analyze_resume(resume.content)
         return analysis
         
     except HTTPException:
@@ -188,11 +164,7 @@ async def get_job_keywords(
     Helps users optimize their resume for specific positions
     """
     try:
-        # This endpoint is not yet implemented with OpenAI
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Keyword extraction feature is not yet implemented"
-        )
+        keywords = resume_optimizer_service.get_keywords_for_job(job_title, job_description)
         return {
             "job_title": job_title,
             "recommended_keywords": keywords,
