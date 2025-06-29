@@ -3,7 +3,7 @@ External services router
 Handles resume optimization and LinkedIn scraping services
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -107,7 +107,10 @@ async def analyze_resume(
 
 @router.get("/api/suggestions/jobs", response_model=List[LinkedInJobResponse])
 async def get_job_suggestions(
-    request: LinkedInJobRequest,
+    keywords: str,
+    location: Optional[str] = None,
+    experience_level: Optional[str] = None,
+    limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -116,6 +119,13 @@ async def get_job_suggestions(
     Searches for relevant job postings
     """
     try:
+        # Create request object from query parameters
+        request = LinkedInJobRequest(
+            keywords=keywords,
+            location=location,
+            experience_level=experience_level,
+            limit=limit
+        )
         jobs = linkedin_scraper_service.search_jobs(request)
         return jobs
         
@@ -130,7 +140,7 @@ async def get_job_suggestions(
 
 @router.get("/api/suggestions/companies", response_model=LinkedInCompanyResponse)
 async def get_company_information(
-    request: LinkedInCompanyRequest,
+    company_name: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -139,6 +149,8 @@ async def get_company_information(
     Returns detailed company data including industry and size
     """
     try:
+        # Create request object from query parameter
+        request = LinkedInCompanyRequest(company_name=company_name)
         company_info = linkedin_scraper_service.get_company_info(request)
         return company_info
         
