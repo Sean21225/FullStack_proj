@@ -209,44 +209,53 @@ class ResumeOptimizerService:
     def _expand_short_content(self, content: str, job_description: Optional[str] = None) -> str:
         """Expand very short resume content with suggested structure"""
         content_lower = content.lower()
+        original_content = content.strip()
         
         # Detect if it's about programming/software
-        if any(word in content_lower for word in ["program", "code", "software", "develop"]):
+        if any(word in content_lower for word in ["program", "code", "software", "develop", "coding"]):
+            # Make it sound more natural and less template-like
+            programming_level = "beginner" if any(word in content_lower for word in ["little", "bit", "new", "learning"]) else "developing"
+            
             return f"""PROFESSIONAL SUMMARY
-Aspiring software developer with foundational programming knowledge and passion for technology.
+Entry-level software developer with foundational programming skills and enthusiasm for technology. Currently building technical expertise and seeking opportunities to apply programming knowledge in real-world projects.
 
 TECHNICAL SKILLS
-• Programming: {content}
-• Problem-solving and analytical thinking
-• Eager to learn new technologies
+• Programming Experience: {original_content}
+• Problem-solving and logical thinking
+• Self-directed learning and research
+• Basic understanding of software development concepts
 
-EXPERIENCE
-• Self-taught programming fundamentals
-• Completed personal coding projects
-• Developing technical problem-solving skills
+PROJECTS & EXPERIENCE  
+• Practicing programming fundamentals through personal study
+• Working on small coding exercises and tutorials
+• Developing problem-solving skills through programming challenges
+• Building foundation in software development best practices
 
-EDUCATION
-• Currently expanding programming knowledge
-• Committed to continuous learning in software development"""
+EDUCATION & LEARNING
+• Actively learning programming languages and development tools
+• Committed to continuous improvement in technical skills
+• Studying software development concepts and methodologies"""
         
         # Generic professional expansion
         return f"""PROFESSIONAL SUMMARY
-Motivated professional with diverse skills and strong work ethic.
+Motivated individual with a strong desire to learn and contribute. Demonstrates {original_content.lower()} along with excellent work ethic and commitment to professional growth.
 
-CORE COMPETENCIES
-• {content}
-• Strong communication and teamwork abilities
+CORE STRENGTHS
+• {original_content}
+• Strong communication and interpersonal skills
 • Problem-solving and analytical thinking
-• Adaptable and quick learner
+• Adaptable and eager to take on new challenges
 
-EXPERIENCE
-• Applied skills in various projects and situations
-• Demonstrated reliability and commitment to excellence
-• Continuously developing professional capabilities
+EXPERIENCE & BACKGROUND
+• Applied personal skills in various situations and projects  
+• Demonstrated reliability and attention to detail
+• Actively seeking opportunities to expand professional capabilities
+• Committed to delivering quality work and continuous improvement
 
-EDUCATION & DEVELOPMENT
-• Committed to ongoing skill development
-• Self-motivated learner with growth mindset"""
+PERSONAL DEVELOPMENT
+• Self-motivated learner with genuine interest in professional growth
+• Open to feedback and dedicated to skill enhancement
+• Strong work ethic and positive attitude toward challenges"""
     
     def optimize_resume(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
         """
@@ -254,14 +263,14 @@ EDUCATION & DEVELOPMENT
         Returns optimized content with intelligent suggestions and scoring
         """
         try:
-            # Apply content optimizations
-            optimized_content = self._optimize_content(request.resume_content, request.job_description)
+            # Calculate quality score based on ORIGINAL content
+            score = self._calculate_score(request.resume_content, request.job_description)
             
-            # Generate improvement suggestions
+            # Generate improvement suggestions based on original content
             suggestions = self._generate_suggestions(request.resume_content, request.job_description)
             
-            # Calculate quality score
-            score = self._calculate_score(optimized_content, request.job_description)
+            # Apply content optimizations (this may expand short content)
+            optimized_content = self._optimize_content(request.resume_content, request.job_description)
             
             return ResumeOptimizationResponse(
                 optimized_content=optimized_content,
@@ -274,7 +283,7 @@ EDUCATION & DEVELOPMENT
             return ResumeOptimizationResponse(
                 optimized_content=request.resume_content,
                 suggestions=["Unable to process optimization at this time"],
-                score=50.0
+                score=25.0
             )
     
     def analyze_resume(self, resume_content: str) -> Dict[str, Any]:
