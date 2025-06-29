@@ -122,6 +122,9 @@ A complete full-stack job application management platform with FastAPI backend a
 - Improved scoring algorithm to properly cap at 100% and provide realistic assessments
 - Enhanced content optimization to expand very short resumes with professional structure
 - Added intelligent suggestions tailored to content length and quality
+- **June 29, 2025**: Reconfigured application deployment for Replit environment
+- Frontend now runs on port 5000 (accessible) with backend API on port 8000
+- Fixed port accessibility issues and established proper frontend-backend communication
 
 ## User Preferences
 

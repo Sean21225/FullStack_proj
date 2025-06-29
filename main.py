@@ -7,6 +7,7 @@ import os
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from database import engine, Base
@@ -84,7 +85,7 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

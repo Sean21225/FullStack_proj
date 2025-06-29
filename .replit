@@ -14,20 +14,20 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "FastAPI Server"
+args = "Backend API"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "React Frontend"
 
 [[workflows.workflow]]
-name = "FastAPI Server"
+name = "Backend API"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main.py"
-waitForPort = 5000
+waitForPort = 8000
 
 [[workflows.workflow]]
 name = "React Frontend"
@@ -36,7 +36,7 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd app/frontend && npm start"
-waitForPort = 3000
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "pip install fastapi uvicorn sqlalchemy psycopg2-binary \"pydantic[email]\" python-jose passlib[bcrypt] python-multipart requests pytest httpx email-validator && python main.py"]
@@ -52,3 +52,7 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
