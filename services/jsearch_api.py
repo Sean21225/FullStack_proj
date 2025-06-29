@@ -85,30 +85,69 @@ class JSearchService:
         common_words = {'in', 'the', 'at', 'of', 'and', 'or', 'a', 'an'}
         location_keywords = location_keywords - common_words
         
+        # Add specific location mappings for better matching
+        if 'tel' in location_keywords or 'aviv' in location_keywords:
+            location_keywords.update(['tel', 'aviv', 'israel'])
+        if 'israel' in location_keywords:
+            location_keywords.update(['israel', 'israeli'])
+        
         filtered_jobs = []
         for job in jobs:
-            job_location = (job.get("location") or "").lower()
+            # Check multiple location fields
+            job_location_text = " ".join([
+                (job.get("location") or "").lower(),
+                (job.get("city") or "").lower(),
+                (job.get("state") or "").lower(),
+                (job.get("country") or "").lower()
+            ])
             
             # Check if any location keywords match the job location
             matches_location = False
             for keyword in location_keywords:
-                if keyword in job_location:
+                if keyword in job_location_text:
                     matches_location = True
                     break
             
-            # Also include remote jobs if they don't have conflicting location info
-            is_remote = job.get("is_remote", False) or "remote" in job_location
+            # Also include remote jobs
+            is_remote = job.get("is_remote", False) or "remote" in job_location_text
             
-            # Include job if it matches location or is remote
-            if matches_location or is_remote:
+            # Special handling for specific countries/regions
+            is_country_match = False
+            if 'israel' in location_keywords:
+                is_country_match = 'israel' in job_location_text or 'il' in (job.get("country") or "").lower()
+            
+            # Include job if it matches location, is remote, or matches country
+            if matches_location or is_remote or is_country_match:
                 filtered_jobs.append(job)
         
-        # If filtering removed too many jobs, return original list with a warning log
-        if len(filtered_jobs) < max(2, len(jobs) // 3):
-            logger.warning(f"Location filtering removed too many jobs ({len(jobs)} -> {len(filtered_jobs)}), returning original results")
-            return jobs
+        # Log the filtering results for debugging
+        logger.info(f"Location filtering for '{original_location}': {len(jobs)} -> {len(filtered_jobs)} jobs")
         
-        logger.info(f"Location filtering: {len(jobs)} -> {len(filtered_jobs)} jobs")
+        # If filtering removed too many jobs, try a more lenient approach
+        if len(filtered_jobs) == 0:
+            logger.warning("Strict filtering removed all jobs, trying lenient filtering...")
+            
+            # More lenient filtering - include any job with remote possibility or partial matches
+            for job in jobs:
+                job_location_text = " ".join([
+                    (job.get("location") or "").lower(),
+                    (job.get("city") or "").lower(),
+                    (job.get("country") or "").lower()
+                ])
+                
+                # Include remote jobs or jobs that might be relevant
+                if (job.get("is_remote", False) or 
+                    "remote" in job_location_text or
+                    any(keyword in job_location_text for keyword in ['global', 'worldwide', 'international'])):
+                    filtered_jobs.append(job)
+            
+            if len(filtered_jobs) > 0:
+                logger.info(f"Lenient filtering found {len(filtered_jobs)} remote/international jobs")
+                return filtered_jobs
+            else:
+                logger.warning("No relevant jobs found, returning original results with location disclaimer")
+                return jobs
+        
         return filtered_jobs
         
     def search_jobs(self, query: str, location: Optional[str] = None, 
@@ -161,10 +200,24 @@ class JSearchService:
             # Transform to standardized format
             standardized_jobs = []
             for job in jobs:
+                # Build comprehensive location string for better filtering
+                job_location_parts = []
+                if job.get("job_city"):
+                    job_location_parts.append(job.get("job_city"))
+                if job.get("job_state"):
+                    job_location_parts.append(job.get("job_state"))
+                if job.get("job_country"):
+                    job_location_parts.append(job.get("job_country"))
+                
+                full_location = ", ".join(job_location_parts) if job_location_parts else ""
+                
                 standardized_job = {
                     "title": job.get("job_title", ""),
                     "company": job.get("employer_name", ""),
-                    "location": job.get("job_city", ""),
+                    "location": full_location,
+                    "city": job.get("job_city", ""),
+                    "state": job.get("job_state", ""),
+                    "country": job.get("job_country", ""),
                     "description": job.get("job_description", ""),
                     "url": job.get("job_apply_link", ""),
                     "posted_date": job.get("job_posted_at_datetime_utc", ""),
