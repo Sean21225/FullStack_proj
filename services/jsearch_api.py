@@ -264,28 +264,76 @@ class JSearchService:
                 
             jobs = data.get("data", [])
             
-            # If no jobs found for international location, try remote jobs as fallback
+            # If no jobs found for international location, try broader search approaches
             if not jobs and normalized_location and not self._should_add_experience_to_query(normalized_location):
-                logger.info(f"No local jobs found for {normalized_location}, searching for remote opportunities")
-                remote_params = {
-                    "query": f"remote {query}",
-                    "page": "1",
+                logger.info(f"No local jobs found for {normalized_location}, trying alternative search strategies")
+                
+                # Try search without location restriction but with global/international keywords
+                global_params = {
+                    "query": f"{query} international global remote worldwide",
+                    "page": "1", 
                     "num_pages": str(num_pages),
                     "date_posted": date_posted,
                     "employment_types": employment_types
                 }
                 
-                remote_response = requests.get(url, headers=self.headers, params=remote_params, timeout=30)
-                if remote_response.status_code == 200:
-                    remote_data = remote_response.json()
-                    if remote_data.get("status") == "OK":
-                        jobs = remote_data.get("data", [])
-                        if jobs:
-                            logger.info(f"Found {len(jobs)} remote job alternatives")
+                global_response = requests.get(url, headers=self.headers, params=global_params, timeout=30)
+                if global_response.status_code == 200:
+                    global_data = global_response.json()
+                    if global_data.get("status") == "OK":
+                        potential_jobs = global_data.get("data", [])
+                        
+                        # Filter for truly remote or international opportunities
+                        filtered_jobs = []
+                        for job in potential_jobs:
+                            job_title = (job.get("job_title", "") or "").lower()
+                            job_desc = (job.get("job_description", "") or "").lower()
+                            is_remote = job.get("job_is_remote", False)
+                            
+                            # Look for indicators of international/remote opportunities
+                            international_indicators = [
+                                "remote", "worldwide", "global", "international", 
+                                "anywhere", "work from home", "distributed", "virtual"
+                            ]
+                            
+                            is_international = any(indicator in job_title or indicator in job_desc 
+                                                 for indicator in international_indicators)
+                            
+                            if is_remote or is_international:
+                                filtered_jobs.append(job)
+                        
+                        if filtered_jobs:
+                            jobs = filtered_jobs[:10]  # Limit to 10 best matches
+                            logger.info(f"Found {len(jobs)} international/remote opportunities")
             
-            # Transform to standardized format
+            # Transform to standardized format and add metadata for international searches
             standardized_jobs = []
-            is_remote_fallback = not jobs and normalized_location and not self._should_add_experience_to_query(normalized_location)
+            is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
+            
+            # If no jobs found for international location, add an informational message
+            if not jobs and is_international_location:
+                # Create an informational "job" entry to guide users
+                info_job = {
+                    "title": f"Limited results for {normalized_location}",
+                    "company": "Job Search Info",
+                    "location": normalized_location,
+                    "city": "",
+                    "state": "",
+                    "country": "",
+                    "description": f"Our job database has limited coverage for {normalized_location}. We recommend: 1) Try major cities like 'London', 'Berlin', or 'Amsterdam' for Europe, 2) Search for 'remote' positions that allow international work, 3) Check local job boards for {normalized_location}, 4) Consider searching for international companies with offices in your region.",
+                    "url": "",
+                    "posted_date": "",
+                    "employment_type": "Information",
+                    "salary_min": None,
+                    "salary_max": None,
+                    "currency": None,
+                    "is_remote": False,
+                    "job_id": "info",
+                    "source": "system_info"
+                }
+                standardized_jobs.append(info_job)
+                logger.info(f"Added informational message for limited coverage in {normalized_location}")
+                return standardized_jobs
             
             for job in jobs:
                 # Build comprehensive location string for better filtering
