@@ -139,6 +139,11 @@ A complete full-stack job application management platform with FastAPI backend a
 - Added location normalization for common cities (Tel Aviv, New York, Berlin, etc.)
 - Implemented priority-based filtering that shows location-relevant jobs first
 - Location searches now return properly filtered results for specified cities and countries
+- **June 29, 2025**: Identified JSearch API limitations for international job coverage
+- JSearch API primarily covers US job markets with limited international data
+- Implemented fallback system for international locations to show remote opportunities
+- Added experience level filtering that works for US locations and uses post-search filtering for international
+- System now provides informative messages when job coverage is limited for specific regions
 
 ## User Preferences
 

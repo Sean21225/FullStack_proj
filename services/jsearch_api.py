@@ -323,30 +323,29 @@ class JSearchService:
             standardized_jobs = []
             is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
             
-            # If no jobs found for international location, add an informational message
-            if not jobs and is_international_location:
+            # Add informational guidance for international locations with limited results
+            if is_international_location and len(standardized_jobs) < 3:
                 # Create an informational "job" entry to guide users
                 info_job = {
-                    "title": f"Limited results for {normalized_location}",
-                    "company": "Job Search Info",
+                    "title": f"Job Search Tips for {normalized_location}",
+                    "company": "Job Search Guidance",
                     "location": normalized_location,
                     "city": "",
                     "state": "",
                     "country": "",
-                    "description": f"Our job database has limited coverage for {normalized_location}. We recommend: 1) Try major cities like 'London', 'Berlin', or 'Amsterdam' for Europe, 2) Search for 'remote' positions that allow international work, 3) Check local job boards for {normalized_location}, 4) Consider searching for international companies with offices in your region.",
+                    "description": f"Our current job database focuses primarily on US markets with limited coverage for {normalized_location}. For better results in your region, we recommend: 1) Use local job boards like Jobs.ch (Switzerland), StepStone (Germany), or LinkedIn for international opportunities, 2) Search without location to find remote positions that accept international candidates, 3) Try broader search terms like your profession + 'remote' or 'international', 4) Consider major European cities like London, Berlin, or Amsterdam which may have better coverage.",
                     "url": "",
                     "posted_date": "",
-                    "employment_type": "Information",
+                    "employment_type": "Guidance",
                     "salary_min": None,
                     "salary_max": None,
                     "currency": None,
                     "is_remote": False,
-                    "job_id": "info",
-                    "source": "system_info"
+                    "job_id": "guidance",
+                    "source": "system_guidance"
                 }
-                standardized_jobs.append(info_job)
-                logger.info(f"Added informational message for limited coverage in {normalized_location}")
-                return standardized_jobs
+                standardized_jobs.insert(0, info_job)  # Put guidance at the top
+                logger.info(f"Added guidance message for limited coverage in {normalized_location}")
             
             for job in jobs:
                 # Build comprehensive location string for better filtering
