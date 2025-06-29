@@ -16,7 +16,7 @@ from schemas import (
 )
 from auth import get_current_active_user
 from services.resume_optimizer import resume_optimizer_service
-from services.scrapingdog_linkedin import scrapingdog_linkedin_service
+from services.jsearch_api import jsearch_service
 
 router = APIRouter()
 
@@ -119,15 +119,16 @@ async def get_job_suggestions(
     Searches for relevant job postings
     """
     try:
-        # Create request object from query parameters
-        request = LinkedInJobRequest(
-            keywords=keywords,
+        # Use JSearch API to search for jobs from LinkedIn, Indeed, Glassdoor, etc.
+        jobs = jsearch_service.search_jobs(
+            query=keywords,
             location=location,
-            experience_level=experience_level,
-            limit=limit
+            num_pages=1  # Limit to first page for now
         )
-        jobs = scrapingdog_linkedin_service.search_jobs(request)
-        return jobs
+        
+        # Limit results as requested
+        limited_jobs = jobs[:limit] if jobs else []
+        return limited_jobs
         
     except HTTPException:
         raise
@@ -149,10 +150,29 @@ async def get_company_information(
     Returns detailed company data including industry and size
     """
     try:
-        # Create request object from query parameter
-        request = LinkedInCompanyRequest(company_name=company_name)
-        company_info = scrapingdog_linkedin_service.get_company_info(request)
-        return company_info
+        # Use JSearch API to get company information from job postings
+        companies = jsearch_service.search_companies(company_name)
+        
+        if companies:
+            # Return first matching company
+            company = companies[0]
+            return {
+                "name": company["name"],
+                "industry": "Technology",  # JSearch doesn't provide industry data
+                "size": f"~{company['job_count']} current job openings",
+                "description": f"Company with {company['job_count']} active job postings",
+                "website": None,
+                "headquarters": ", ".join(company["locations"][:3]) if company["locations"] else None
+            }
+        else:
+            return {
+                "name": company_name,
+                "industry": "Unknown",
+                "size": "No current job postings found",
+                "description": f"No recent job postings found for {company_name}",
+                "website": None,
+                "headquarters": None
+            }
         
     except HTTPException:
         raise
@@ -173,8 +193,9 @@ async def get_trending_jobs(
     Helps users understand current job market demand
     """
     try:
-        # Trending jobs feature not available with current ScrapingDog service
-        trending_jobs = []
+        # Use JSearch API to get trending jobs
+        trending_jobs = jsearch_service.get_trending_jobs(location=location)
+        
         return {
             "trending_jobs": trending_jobs,
             "location": location,
