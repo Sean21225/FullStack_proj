@@ -10,6 +10,14 @@ const Resumes = () => {
     title: '',
     content: ''
   });
+  const [showOptimizeModal, setShowOptimizeModal] = useState(false);
+  const [optimizingResume, setOptimizingResume] = useState(null);
+  const [optimizeData, setOptimizeData] = useState({
+    jobDescription: '',
+    optimizationType: 'general'
+  });
+  const [optimizationResult, setOptimizationResult] = useState(null);
+  const [optimizing, setOptimizing] = useState(false);
 
   useEffect(() => {
     fetchResumes();
@@ -125,6 +133,59 @@ const Resumes = () => {
     });
   };
 
+  const handleOptimize = (resume) => {
+    setOptimizingResume(resume);
+    setOptimizeData({
+      jobDescription: '',
+      optimizationType: 'general'
+    });
+    setOptimizationResult(null);
+    setShowOptimizeModal(true);
+  };
+
+  const handleOptimizeSubmit = async (e) => {
+    e.preventDefault();
+    setOptimizing(true);
+    
+    try {
+      const optimizeRequest = {
+        resume_content: optimizingResume.content,
+        job_description: optimizeData.jobDescription || null,
+        optimization_type: optimizeData.optimizationType
+      };
+      
+      const response = await api.post('/services/optimize-resume', optimizeRequest);
+      setOptimizationResult(response.data);
+    } catch (error) {
+      console.error('Failed to optimize resume:', error);
+      let errorMessage = 'Failed to optimize resume. ';
+      
+      if (error.response?.data?.detail) {
+        errorMessage += error.response.data.detail;
+      } else if (error.response?.status === 503) {
+        errorMessage += 'The optimization service is temporarily unavailable. Please try again later.';
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
+  const applyOptimization = () => {
+    if (optimizationResult) {
+      setEditingResume(optimizingResume);
+      setFormData({
+        title: optimizingResume.title + ' (Optimized)',
+        content: optimizationResult.optimized_content
+      });
+      setShowOptimizeModal(false);
+      setShowModal(true);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading resumes...</div>;
   }
@@ -161,6 +222,12 @@ const Resumes = () => {
               </p>
             </div>
             <div className="resume-actions">
+              <button 
+                onClick={() => handleOptimize(resume)}
+                className="btn btn-primary btn-small"
+              >
+                Optimize
+              </button>
               <button 
                 onClick={() => handleEdit(resume)}
                 className="btn btn-secondary btn-small"
@@ -245,6 +312,122 @@ const Resumes = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Optimization Modal */}
+      {showOptimizeModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '800px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                Optimize Resume: {optimizingResume?.title}
+              </h2>
+              <button 
+                onClick={() => setShowOptimizeModal(false)}
+                className="close-btn"
+              >
+                ×
+              </button>
+            </div>
+            
+            {!optimizationResult ? (
+              <form onSubmit={handleOptimizeSubmit}>
+                <div className="form-group">
+                  <label>Job Description (Optional)</label>
+                  <textarea
+                    value={optimizeData.jobDescription}
+                    onChange={(e) => setOptimizeData({ ...optimizeData, jobDescription: e.target.value })}
+                    rows="8"
+                    placeholder="Paste the job description here to tailor your resume specifically for this role..."
+                  />
+                  <small style={{ color: '#666' }}>
+                    Adding a job description will help tailor your resume for that specific role
+                  </small>
+                </div>
+                
+                <div className="form-group">
+                  <label>Optimization Type</label>
+                  <select
+                    value={optimizeData.optimizationType}
+                    onChange={(e) => setOptimizeData({ ...optimizeData, optimizationType: e.target.value })}
+                  >
+                    <option value="general">General Optimization</option>
+                    <option value="ats">ATS-Friendly</option>
+                    <option value="keywords">Keyword Enhancement</option>
+                    <option value="format">Format Improvement</option>
+                  </select>
+                </div>
+                
+                <div className="actions">
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={optimizing}
+                  >
+                    {optimizing ? 'Optimizing...' : 'Optimize Resume'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowOptimizeModal(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div>
+                <div className="optimization-results">
+                  <h3>Optimization Results</h3>
+                  
+                  {optimizationResult.score && (
+                    <div className="score-section">
+                      <h4>Resume Score: {Math.round(optimizationResult.score * 100)}%</h4>
+                    </div>
+                  )}
+                  
+                  {optimizationResult.suggestions && optimizationResult.suggestions.length > 0 && (
+                    <div className="suggestions-section">
+                      <h4>Suggestions for Improvement:</h4>
+                      <ul>
+                        {optimizationResult.suggestions.map((suggestion, index) => (
+                          <li key={index}>{suggestion}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="optimized-content-section">
+                    <h4>Optimized Content:</h4>
+                    <div className="content-preview">
+                      <textarea
+                        value={optimizationResult.optimized_content}
+                        readOnly
+                        rows="15"
+                        style={{ backgroundColor: '#f5f5f5' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="actions">
+                  <button 
+                    onClick={applyOptimization}
+                    className="btn btn-primary"
+                  >
+                    Create New Resume with Optimized Content
+                  </button>
+                  <button 
+                    onClick={() => setShowOptimizeModal(false)}
+                    className="btn btn-secondary"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
