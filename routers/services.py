@@ -15,7 +15,7 @@ from schemas import (
     LinkedInCompanyRequest, LinkedInCompanyResponse
 )
 from auth import get_current_active_user
-from services.openai_resume_optimizer import openai_resume_optimizer_service
+from services.free_resume_optimizer import free_resume_optimizer_service
 from services.linkedin_scraper import linkedin_scraper_service
 
 router = APIRouter()
@@ -28,12 +28,12 @@ async def optimize_resume(
     db: Session = Depends(get_db)
 ):
     """
-    Optimize and tailor resume content using AI service
-    Integrates with OpenAI ChatGPT API
+    Optimize and tailor resume content using free AI service
+    Uses rule-based analysis with no API costs
     """
     try:
-        # Call the OpenAI resume optimizer service
-        optimized_result = openai_resume_optimizer_service.optimize_resume(request)
+        # Call the free resume optimizer service
+        optimized_result = free_resume_optimizer_service.optimize_resume(request)
         return optimized_result
         
     except HTTPException:
@@ -56,8 +56,8 @@ async def optimize_resume_legacy(
     Integrates with external resume optimization API
     """
     try:
-        # Call the OpenAI resume optimizer service
-        optimized_result = openai_resume_optimizer_service.optimize_resume(request)
+        # Call the free resume optimizer service
+        optimized_result = free_resume_optimizer_service.optimize_resume(request)
         return optimized_result
         
     except HTTPException:
@@ -93,7 +93,7 @@ async def analyze_resume(
             )
         
         # Analyze the resume content
-        analysis = openai_resume_optimizer_service.analyze_resume(resume.content)
+        analysis = free_resume_optimizer_service.analyze_resume(resume.content)
         return analysis
         
     except HTTPException:
