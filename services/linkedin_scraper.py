@@ -21,7 +21,7 @@ class LinkedInScraperService:
     
     def __init__(self):
         self.api_key = os.getenv("LINKEDIN_SCRAPER_API_KEY", "demo_key")
-        self.base_url = os.getenv("LINKEDIN_SCRAPER_BASE_URL", "https://api.linkedinscraper.com/v1")
+        self.base_url = os.getenv("LINKEDIN_SCRAPER_BASE_URL", "https://api.scrapingdog.com")
         self.timeout = int(os.getenv("API_TIMEOUT", "45"))  # LinkedIn scraping can take longer
         
     def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:

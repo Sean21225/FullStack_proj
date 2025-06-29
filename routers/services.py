@@ -16,7 +16,7 @@ from schemas import (
 )
 from auth import get_current_active_user
 from services.resume_optimizer import resume_optimizer_service
-from services.linkedin_scraper import linkedin_scraper_service
+from services.scrapingdog_linkedin import scrapingdog_linkedin_service
 
 router = APIRouter()
 
@@ -126,7 +126,7 @@ async def get_job_suggestions(
             experience_level=experience_level,
             limit=limit
         )
-        jobs = linkedin_scraper_service.search_jobs(request)
+        jobs = scrapingdog_linkedin_service.search_jobs(request)
         return jobs
         
     except HTTPException:
@@ -151,7 +151,7 @@ async def get_company_information(
     try:
         # Create request object from query parameter
         request = LinkedInCompanyRequest(company_name=company_name)
-        company_info = linkedin_scraper_service.get_company_info(request)
+        company_info = scrapingdog_linkedin_service.get_company_info(request)
         return company_info
         
     except HTTPException:
@@ -173,7 +173,8 @@ async def get_trending_jobs(
     Helps users understand current job market demand
     """
     try:
-        trending_jobs = linkedin_scraper_service.get_trending_jobs(location)
+        # Trending jobs feature not available with current ScrapingDog service
+        trending_jobs = []
         return {
             "trending_jobs": trending_jobs,
             "location": location,
@@ -233,7 +234,8 @@ async def get_personalized_job_suggestions(
                 detail="At least one skill must be provided"
             )
         
-        job_suggestions = linkedin_scraper_service.get_job_suggestions(skills, location)
+        # Personalized job suggestions feature not available with current ScrapingDog service
+        job_suggestions = []
         return job_suggestions
         
     except HTTPException:
