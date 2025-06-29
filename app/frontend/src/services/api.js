@@ -40,7 +40,7 @@ api.interceptors.response.use(
 export const linkedInService = {
   searchJobs: async (params) => {
     try {
-      const response = await api.get('/api/suggestions/jobs', { params });
+      const response = await api.get('/services/api/suggestions/jobs', { params });
       return response.data;
     } catch (error) {
       console.error('Job search failed:', error);
@@ -50,7 +50,7 @@ export const linkedInService = {
 
   getCompanyInfo: async (companyName) => {
     try {
-      const response = await api.get('/api/suggestions/companies', { 
+      const response = await api.get('/services/api/suggestions/companies', { 
         params: { company_name: companyName } 
       });
       return response.data;
