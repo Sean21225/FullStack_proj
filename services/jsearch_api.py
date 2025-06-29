@@ -59,6 +59,27 @@ class JSearchService:
         location_lower = location.lower()
         return location_mappings.get(location_lower, location)
     
+    def _get_experience_keywords(self, experience_level: str) -> str:
+        """
+        Convert experience level to search keywords
+        
+        Args:
+            experience_level: Experience level filter (entry_level, mid_level, senior, etc.)
+            
+        Returns:
+            Keywords to add to search query for experience filtering
+        """
+        experience_mappings = {
+            "internship": "intern internship student",
+            "entry_level": "entry level junior graduate new grad",
+            "mid_level": "mid level experienced",
+            "mid_senior": "senior experienced lead",
+            "senior": "senior lead principal staff",
+            "executive": "director executive VP manager"
+        }
+        
+        return experience_mappings.get(experience_level.lower(), "")
+    
     def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
         """
         Filter jobs by location relevance to improve search accuracy
@@ -152,6 +173,7 @@ class JSearchService:
         
     def search_jobs(self, query: str, location: Optional[str] = None, 
                    employment_types: Optional[str] = "FULLTIME", 
+                   experience_level: Optional[str] = None,
                    num_pages: int = 1, 
                    date_posted: Optional[str] = "all") -> List[Dict[str, Any]]:
         """
@@ -177,6 +199,12 @@ class JSearchService:
             enhanced_query = query
             if normalized_location:
                 enhanced_query = f"{query} {normalized_location}"
+            
+            # Add experience level keywords to query for better filtering
+            if experience_level:
+                experience_keywords = self._get_experience_keywords(experience_level)
+                if experience_keywords:
+                    enhanced_query = f"{enhanced_query} {experience_keywords}"
             
             params = {
                 "query": enhanced_query,
@@ -238,6 +266,12 @@ class JSearchService:
                 filtered_jobs = self._light_filter_jobs_by_location(standardized_jobs, location, normalized_location)
                 if len(filtered_jobs) >= 3:  # Only apply if we still have reasonable results
                     standardized_jobs = filtered_jobs
+            
+            # Apply experience level filtering if specified
+            if experience_level and len(standardized_jobs) > 0:
+                experience_filtered_jobs = self._filter_jobs_by_experience(standardized_jobs, experience_level)
+                if len(experience_filtered_jobs) >= 3:  # Keep reasonable number of results
+                    standardized_jobs = experience_filtered_jobs
                 
             logger.info(f"Successfully retrieved {len(standardized_jobs)} jobs")
             return standardized_jobs
@@ -421,6 +455,53 @@ class JSearchService:
         
         logger.info(f"Light filtering: {len(priority_jobs)} priority jobs, {len(result)} total returned")
         return result
+    
+    def _filter_jobs_by_experience(self, jobs: List[Dict[str, Any]], experience_level: str) -> List[Dict[str, Any]]:
+        """
+        Filter jobs by experience level based on job title and description
+        
+        Args:
+            jobs: List of job dictionaries
+            experience_level: Experience level filter
+            
+        Returns:
+            Filtered list of jobs matching experience level
+        """
+        if not jobs or not experience_level:
+            return jobs
+        
+        # Get experience keywords for filtering
+        experience_keywords = self._get_experience_keywords(experience_level).split()
+        if not experience_keywords:
+            return jobs
+        
+        # Define anti-patterns (keywords that contradict the experience level)
+        anti_patterns = {
+            "internship": ["senior", "lead", "principal", "director", "manager", "experienced"],
+            "entry_level": ["senior", "lead", "principal", "director", "sr", "staff"],
+            "mid_level": ["intern", "junior", "new grad"],
+            "mid_senior": ["intern", "junior", "new grad", "entry"],
+            "senior": ["intern", "junior", "new grad", "entry", "associate"],
+            "executive": ["intern", "junior", "entry", "associate"]
+        }
+        
+        filtered_jobs = []
+        for job in jobs:
+            job_text = f"{job.get('title', '')} {job.get('description', '')}".lower()
+            
+            # Check if job matches experience level keywords
+            has_positive_match = any(keyword.lower() in job_text for keyword in experience_keywords)
+            
+            # Check for anti-patterns
+            anti_keywords = anti_patterns.get(experience_level.lower(), [])
+            has_negative_match = any(anti_keyword in job_text for anti_keyword in anti_keywords)
+            
+            # Include job if it has positive matches and no strong negative matches
+            if has_positive_match or not has_negative_match:
+                filtered_jobs.append(job)
+        
+        logger.info(f"Experience filtering ({experience_level}): {len(jobs)} -> {len(filtered_jobs)} jobs")
+        return filtered_jobs
 
 # Global instance
 jsearch_service = JSearchService()
