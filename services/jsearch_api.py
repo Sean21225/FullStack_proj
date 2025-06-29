@@ -20,6 +20,96 @@ class JSearchService:
             "X-RapidAPI-Key": self.api_key,
             "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
         }
+    
+    def _normalize_location(self, location: str) -> str:
+        """
+        Normalize location string for better API results
+        
+        Args:
+            location: Raw location string from user input
+            
+        Returns:
+            Normalized location string
+        """
+        if not location:
+            return location
+            
+        location = location.strip()
+        
+        # Common location mappings for better results
+        location_mappings = {
+            "tel aviv": "Tel Aviv, Israel",
+            "tel-aviv": "Tel Aviv, Israel", 
+            "telaviv": "Tel Aviv, Israel",
+            "israel": "Israel",
+            "jerusalem": "Jerusalem, Israel",
+            "haifa": "Haifa, Israel",
+            "new york": "New York, NY",
+            "nyc": "New York, NY",
+            "sf": "San Francisco, CA",
+            "san francisco": "San Francisco, CA",
+            "la": "Los Angeles, CA",
+            "los angeles": "Los Angeles, CA",
+            "london": "London, UK",
+            "paris": "Paris, France",
+            "berlin": "Berlin, Germany",
+            "tokyo": "Tokyo, Japan"
+        }
+        
+        location_lower = location.lower()
+        return location_mappings.get(location_lower, location)
+    
+    def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
+        """
+        Filter jobs by location relevance to improve search accuracy
+        
+        Args:
+            jobs: List of job dictionaries
+            original_location: Original location string from user
+            normalized_location: Normalized location string
+            
+        Returns:
+            Filtered list of jobs more relevant to the requested location
+        """
+        if not jobs or not original_location:
+            return jobs
+        
+        # Extract location keywords for matching
+        location_keywords = set()
+        for loc in [original_location.lower(), normalized_location.lower()]:
+            # Split by common delimiters and add individual words
+            words = loc.replace(',', ' ').replace('-', ' ').split()
+            location_keywords.update(words)
+        
+        # Remove common words that don't help with location matching
+        common_words = {'in', 'the', 'at', 'of', 'and', 'or', 'a', 'an'}
+        location_keywords = location_keywords - common_words
+        
+        filtered_jobs = []
+        for job in jobs:
+            job_location = (job.get("location") or "").lower()
+            
+            # Check if any location keywords match the job location
+            matches_location = False
+            for keyword in location_keywords:
+                if keyword in job_location:
+                    matches_location = True
+                    break
+            
+            # Also include remote jobs if they don't have conflicting location info
+            is_remote = job.get("is_remote", False) or "remote" in job_location
+            
+            # Include job if it matches location or is remote
+            if matches_location or is_remote:
+                filtered_jobs.append(job)
+        
+        # If filtering removed too many jobs, return original list with a warning log
+        if len(filtered_jobs) < max(2, len(jobs) // 3):
+            logger.warning(f"Location filtering removed too many jobs ({len(jobs)} -> {len(filtered_jobs)}), returning original results")
+            return jobs
+        
+        logger.info(f"Location filtering: {len(jobs)} -> {len(filtered_jobs)} jobs")
+        return filtered_jobs
         
     def search_jobs(self, query: str, location: Optional[str] = None, 
                    employment_types: Optional[str] = "FULLTIME", 
@@ -41,6 +131,9 @@ class JSearchService:
         try:
             url = f"{self.base_url}/search"
             
+            # Normalize location for better API results
+            normalized_location = self._normalize_location(location) if location else None
+            
             params = {
                 "query": query,
                 "page": "1",
@@ -49,10 +142,10 @@ class JSearchService:
                 "employment_types": employment_types
             }
             
-            if location:
-                params["location"] = location
+            if normalized_location:
+                params["location"] = normalized_location
                 
-            logger.info(f"Searching jobs with query: {query}, location: {location}")
+            logger.info(f"Searching jobs with query: {query}, location: {location} -> normalized: {normalized_location}")
             
             response = requests.get(url, headers=self.headers, params=params, timeout=30)
             response.raise_for_status()
@@ -84,6 +177,10 @@ class JSearchService:
                     "source": "jsearch"
                 }
                 standardized_jobs.append(standardized_job)
+            
+            # Additional location filtering for better accuracy
+            if location and normalized_location:
+                standardized_jobs = self._filter_jobs_by_location(standardized_jobs, location, normalized_location)
                 
             logger.info(f"Successfully retrieved {len(standardized_jobs)} jobs")
             return standardized_jobs
