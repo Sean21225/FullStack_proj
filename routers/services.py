@@ -123,29 +123,8 @@ async def get_job_suggestions(
         jobs = jsearch_service.search_jobs(
             query=keywords,
             location=location,
-            experience_level=experience_level,
             num_pages=1  # Limit to first page for now
         )
-        
-        # For empty results (which now means all fallbacks failed), provide guidance
-        if not jobs and location:
-            location_lower = location.lower().strip()
-            
-            # Get location-specific guidance from jsearch service
-            guidance = jsearch_service._get_location_specific_guidance(location, keywords)
-            
-            # Return a single guidance item instead of empty results
-            return [{
-                "title": f"Job Search Tips for {location}",
-                "company": "Local Resources & Guidance",
-                "location": location,
-                "description": guidance,
-                "url": "https://www.linkedin.com/jobs/",
-                "posted_date": "",
-                "employment_type": "guidance", 
-                "is_remote": False,
-                "source": "guidance"
-            }]
         
         # Limit results as requested
         limited_jobs = jobs[:limit] if jobs else []

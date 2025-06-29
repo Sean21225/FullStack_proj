@@ -59,127 +59,6 @@ class JSearchService:
         location_lower = location.lower()
         return location_mappings.get(location_lower, location)
     
-    def _get_experience_keywords(self, experience_level: str) -> str:
-        """
-        Convert experience level to search keywords
-        
-        Args:
-            experience_level: Experience level filter (entry_level, mid_level, senior, etc.)
-            
-        Returns:
-            Keywords to add to search query for experience filtering
-        """
-        experience_mappings = {
-            "internship": "intern internship student",
-            "entry_level": "entry level junior graduate new grad",
-            "mid_level": "mid level experienced",
-            "mid_senior": "senior experienced lead",
-            "senior": "senior lead principal staff",
-            "executive": "director executive VP manager"
-        }
-        
-        return experience_mappings.get(experience_level.lower(), "")
-    
-    def _should_add_experience_to_query(self, location: Optional[str]) -> bool:
-        """
-        Determine if experience level keywords should be added to the search query
-        Only add for English-speaking regions to avoid reducing results for international searches
-        
-        Args:
-            location: Normalized location string
-            
-        Returns:
-            True if experience keywords should be added to query, False otherwise
-        """
-        if not location:
-            return True  # Default to adding keywords if no location specified
-        
-        location_lower = location.lower()
-        
-        # English-speaking countries/regions where experience keywords work well
-        english_regions = [
-            "united states", "usa", "us", "america",
-            "canada", "uk", "united kingdom", "england", "scotland", "wales",
-            "australia", "new zealand", "ireland", "south africa"
-        ]
-        
-        # US states and major English-speaking cities
-        us_regions = [
-            "new york", "california", "texas", "florida", "washington",
-            "seattle", "san francisco", "los angeles", "chicago", "boston",
-            "atlanta", "denver", "austin", "miami", "philadelphia"
-        ]
-        
-        # Check if location matches English-speaking regions
-        for region in english_regions + us_regions:
-            if region in location_lower:
-                return True
-        
-        return False  # For international locations, rely on post-search filtering only
-    
-    def _get_location_specific_guidance(self, location: str, query: str) -> str:
-        """
-        Provide location-specific job search guidance and resources
-        
-        Args:
-            location: The location being searched
-            query: The job search query
-            
-        Returns:
-            Tailored guidance for job searching in that location
-        """
-        location_lower = location.lower()
-        
-        # Define region-specific job boards and guidance
-        guidance_map = {
-            "israel": {
-                "boards": ["JobMaster.co.il", "AllJobs.co.il", "Drushim.co.il", "LinkedIn Israel"],
-                "tips": "Israel has a thriving tech scene, especially in Tel Aviv. Many international companies have R&D centers here."
-            },
-            "tel aviv": {
-                "boards": ["JobMaster.co.il", "AllJobs.co.il", "Drushim.co.il", "LinkedIn Israel"],
-                "tips": "Tel Aviv is Israel's tech capital with many startups and international companies. Check company websites directly."
-            },
-            "france": {
-                "boards": ["Indeed France", "Monster.fr", "LeBonCoin Emploi", "LinkedIn France"],
-                "tips": "France has strong employment protections. Consider learning French for better opportunities."
-            },
-            "paris": {
-                "boards": ["Indeed France", "Monster.fr", "LeBonCoin Emploi", "LinkedIn France", "Welcome to the Jungle"],
-                "tips": "Paris has a growing tech ecosystem. Many international companies have European headquarters here."
-            },
-            "germany": {
-                "boards": ["StepStone.de", "Indeed Germany", "Xing", "LinkedIn Germany"],
-                "tips": "Germany has a strong engineering culture. German language skills are often required."
-            },
-            "berlin": {
-                "boards": ["StepStone.de", "Indeed Germany", "Xing", "LinkedIn Germany", "TheLocal.de Jobs"],
-                "tips": "Berlin is a major tech hub with many English-speaking opportunities, especially in startups."
-            },
-            "uk": {
-                "boards": ["Indeed UK", "Reed.co.uk", "Totaljobs.com", "LinkedIn UK"],
-                "tips": "UK has a mature tech sector. Right to work documentation is essential post-Brexit."
-            },
-            "london": {
-                "boards": ["Indeed UK", "Reed.co.uk", "Totaljobs.com", "LinkedIn UK", "CWJobs"],
-                "tips": "London is a global financial and tech center with high salaries but also high living costs."
-            }
-        }
-        
-        # Find matching guidance
-        guidance_info = None
-        for region, info in guidance_map.items():
-            if region in location_lower:
-                guidance_info = info
-                break
-        
-        if not guidance_info:
-            # Default guidance for other international locations
-            return f"Our database focuses on US markets with limited {location} coverage. For {query} positions in {location}, try: 1) LinkedIn with location filters, 2) Local job boards in your region, 3) Company websites directly, 4) Professional networks and referrals, 5) Government employment services in your country."
-        
-        boards_list = ", ".join(guidance_info["boards"])
-        return f"For {query} positions in {location}, recommended job boards: {boards_list}. Local insight: {guidance_info['tips']} Also consider networking events, company career pages, and professional associations in your field."
-    
     def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
         """
         Filter jobs by location relevance to improve search accuracy
@@ -273,7 +152,6 @@ class JSearchService:
         
     def search_jobs(self, query: str, location: Optional[str] = None, 
                    employment_types: Optional[str] = "FULLTIME", 
-                   experience_level: Optional[str] = None,
                    num_pages: int = 1, 
                    date_posted: Optional[str] = "all") -> List[Dict[str, Any]]:
         """
@@ -300,12 +178,6 @@ class JSearchService:
             if normalized_location:
                 enhanced_query = f"{query} {normalized_location}"
             
-            # Add experience level keywords to query only for US/English-speaking regions
-            if experience_level and self._should_add_experience_to_query(normalized_location):
-                experience_keywords = self._get_experience_keywords(experience_level)
-                if experience_keywords:
-                    enhanced_query = f"{enhanced_query} {experience_keywords}"
-            
             params = {
                 "query": enhanced_query,
                 "page": "1",
@@ -326,97 +198,9 @@ class JSearchService:
                 return []
                 
             jobs = data.get("data", [])
-            logger.info(f"Initial search returned {len(jobs)} jobs for query: {enhanced_query}")
             
-            # For international locations with no results, don't try fallback searches
-            # Instead, we'll provide helpful guidance in the results section
-            
-            # Transform to standardized format and add metadata for international searches
+            # Transform to standardized format
             standardized_jobs = []
-            is_international_location = normalized_location and not self._should_add_experience_to_query(normalized_location)
-            
-            # For international locations with no results, try multiple search strategies
-            if is_international_location and len(jobs) == 0:
-                logger.info(f"No local jobs found for {normalized_location}. Trying location-specific search strategies.")
-                
-                # Extract country and city from normalized location
-                location_parts = normalized_location.split(", ")
-                city = location_parts[0] if location_parts else normalized_location
-                country = location_parts[1] if len(location_parts) > 1 else ""
-                
-                search_strategies = []
-                
-                # Strategy 1: Search for jobs mentioning the specific location in description
-                search_strategies.append(f'{query} "{city}"')
-                if country:
-                    search_strategies.append(f'{query} "{country}"')
-                
-                # Strategy 2: Search for remote jobs that mention the location
-                search_strategies.append(f'{query} remote "{city}"')
-                
-                # Strategy 3: Search for international/global positions
-                search_strategies.append(f'{query} international remote')
-                search_strategies.append(f'{query} global remote')
-                
-                all_found_jobs = []
-                
-                for strategy_query in search_strategies:
-                    try:
-                        strategy_params = {
-                            "query": strategy_query,
-                            "page": "1", 
-                            "num_pages": "1",
-                            "date_posted": date_posted,
-                            "employment_types": employment_types
-                        }
-                        
-                        logger.info(f"Trying search strategy: {strategy_query}")
-                        
-                        strategy_response = requests.get(url, headers=self.headers, params=strategy_params, timeout=30)
-                        strategy_response.raise_for_status()
-                        strategy_data = strategy_response.json()
-                        
-                        if strategy_data.get("status") == "OK":
-                            strategy_jobs = strategy_data.get("data", [])
-                            
-                            # Filter jobs that are relevant to the location
-                            for job in strategy_jobs:
-                                job_desc = ((job.get("job_description") or "") + " " + (job.get("job_title") or "")).lower()
-                                job_location = ((job.get("job_city") or "") + " " + (job.get("job_state") or "") + " " + (job.get("job_country") or "")).lower()
-                                
-                                # Check if job mentions the target location or is remote-friendly
-                                location_mentioned = (city.lower() in job_desc or 
-                                                    city.lower() in job_location or
-                                                    (country and country.lower() in job_desc) or
-                                                    (country and country.lower() in job_location))
-                                
-                                is_remote_friendly = (job.get("job_is_remote", False) or 
-                                                   "remote" in job_desc or 
-                                                   "work from home" in job_desc or
-                                                   "international" in job_desc or
-                                                   "global" in job_desc or
-                                                   "worldwide" in job_desc)
-                                
-                                if location_mentioned or is_remote_friendly:
-                                    # Avoid duplicates
-                                    job_id = job.get("job_id", "")
-                                    if not any(existing_job.get("job_id") == job_id for existing_job in all_found_jobs):
-                                        all_found_jobs.append(job)
-                            
-                            if len(all_found_jobs) >= 10:  # Stop when we have enough jobs
-                                break
-                                
-                    except Exception as e:
-                        logger.warning(f"Search strategy '{strategy_query}' failed: {str(e)}")
-                        continue
-                
-                if all_found_jobs:
-                    jobs = all_found_jobs[:10]  # Limit to 10 jobs
-                    logger.info(f"Found {len(jobs)} location-relevant jobs using search strategies")
-                else:
-                    logger.info("No location-relevant jobs found with any search strategy")
-                    return []
-            
             for job in jobs:
                 # Build comprehensive location string for better filtering
                 job_location_parts = []
@@ -454,12 +238,6 @@ class JSearchService:
                 filtered_jobs = self._light_filter_jobs_by_location(standardized_jobs, location, normalized_location)
                 if len(filtered_jobs) >= 3:  # Only apply if we still have reasonable results
                     standardized_jobs = filtered_jobs
-            
-            # Apply experience level filtering if specified
-            if experience_level and len(standardized_jobs) > 0:
-                experience_filtered_jobs = self._filter_jobs_by_experience(standardized_jobs, experience_level)
-                if len(experience_filtered_jobs) >= 3:  # Keep reasonable number of results
-                    standardized_jobs = experience_filtered_jobs
                 
             logger.info(f"Successfully retrieved {len(standardized_jobs)} jobs")
             return standardized_jobs
@@ -643,53 +421,6 @@ class JSearchService:
         
         logger.info(f"Light filtering: {len(priority_jobs)} priority jobs, {len(result)} total returned")
         return result
-    
-    def _filter_jobs_by_experience(self, jobs: List[Dict[str, Any]], experience_level: str) -> List[Dict[str, Any]]:
-        """
-        Filter jobs by experience level based on job title and description
-        
-        Args:
-            jobs: List of job dictionaries
-            experience_level: Experience level filter
-            
-        Returns:
-            Filtered list of jobs matching experience level
-        """
-        if not jobs or not experience_level:
-            return jobs
-        
-        # Get experience keywords for filtering
-        experience_keywords = self._get_experience_keywords(experience_level).split()
-        if not experience_keywords:
-            return jobs
-        
-        # Define anti-patterns (keywords that contradict the experience level)
-        anti_patterns = {
-            "internship": ["senior", "lead", "principal", "director", "manager", "experienced"],
-            "entry_level": ["senior", "lead", "principal", "director", "sr", "staff"],
-            "mid_level": ["intern", "junior", "new grad"],
-            "mid_senior": ["intern", "junior", "new grad", "entry"],
-            "senior": ["intern", "junior", "new grad", "entry", "associate"],
-            "executive": ["intern", "junior", "entry", "associate"]
-        }
-        
-        filtered_jobs = []
-        for job in jobs:
-            job_text = f"{job.get('title', '')} {job.get('description', '')}".lower()
-            
-            # Check if job matches experience level keywords
-            has_positive_match = any(keyword.lower() in job_text for keyword in experience_keywords)
-            
-            # Check for anti-patterns
-            anti_keywords = anti_patterns.get(experience_level.lower(), [])
-            has_negative_match = any(anti_keyword in job_text for anti_keyword in anti_keywords)
-            
-            # Include job if it has positive matches and no strong negative matches
-            if has_positive_match or not has_negative_match:
-                filtered_jobs.append(job)
-        
-        logger.info(f"Experience filtering ({experience_level}): {len(jobs)} -> {len(filtered_jobs)} jobs")
-        return filtered_jobs
 
 # Global instance
 jsearch_service = JSearchService()

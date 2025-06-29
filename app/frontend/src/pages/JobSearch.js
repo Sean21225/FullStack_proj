@@ -142,7 +142,7 @@ const JobSearch = () => {
           </form>
 
           {/* Job Results */}
-          {!loading && jobs.length > 0 && (
+          {jobs.length > 0 && (
             <div className="results-section">
               <h3>Job Results ({jobs.length})</h3>
               <div className="job-list">
@@ -166,31 +166,6 @@ const JobSearch = () => {
                     )}
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* No Results Message */}
-          {!loading && jobs.length === 0 && searchParams.keywords && (
-            <div className="results-section">
-              <div className="no-results-card">
-                <h3>No Jobs Found</h3>
-                {searchParams.location ? (
-                  <div>
-                    <p>No jobs found for "{searchParams.keywords}" in {searchParams.location}.</p>
-                    <div className="suggestions">
-                      <h4>Try these suggestions:</h4>
-                      <ul>
-                        <li>Search without location for remote opportunities</li>
-                        <li>Try broader keywords (e.g., "developer" instead of "react developer")</li>
-                        <li>Check if location name is spelled correctly</li>
-                        <li>Our database has better coverage for US locations</li>
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <p>No jobs found for "{searchParams.keywords}". Try different keywords or check spelling.</p>
-                )}
               </div>
             </div>
           )}
