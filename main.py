@@ -58,7 +58,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# Mount static files for frontend
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
@@ -76,7 +77,12 @@ async def health_check():
 
 @app.get("/")
 async def root():
-    """Root endpoint with API information"""
+    """Serve the frontend HTML"""
+    return FileResponse('static/index.html')
+
+@app.get("/api")
+async def api_info():
+    """API information endpoint"""
     return {
         "message": "Job Application Management API",
         "version": "1.0.0",
