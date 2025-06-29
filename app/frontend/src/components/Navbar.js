@@ -21,8 +21,6 @@ const Navbar = () => {
           <li><Link to="/dashboard">Dashboard</Link></li>
           <li><Link to="/applications">Applications</Link></li>
           <li><Link to="/resumes">Resumes</Link></li>
-          <li><Link to="/job-search">Job Search</Link></li>
-          <li><Link to="/company-search">Company Info</Link></li>
           <li><Link to="/profile">Profile</Link></li>
           <li>
             <span style={{ color: 'white', marginRight: '10px' }}>
