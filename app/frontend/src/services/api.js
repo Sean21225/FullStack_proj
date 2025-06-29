@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 45000, // Increased timeout for LinkedIn scraping
 });
 
 // Request interceptor to add auth token
@@ -35,5 +35,30 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// LinkedIn scraper service functions
+export const linkedInService = {
+  searchJobs: async (params) => {
+    try {
+      const response = await api.get('/api/suggestions/jobs', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Job search failed:', error);
+      throw error;
+    }
+  },
+
+  getCompanyInfo: async (companyName) => {
+    try {
+      const response = await api.get('/api/suggestions/companies', { 
+        params: { company_name: companyName } 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Company lookup failed:', error);
+      throw error;
+    }
+  }
+};
 
 export default api;
