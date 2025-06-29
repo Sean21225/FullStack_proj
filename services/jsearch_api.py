@@ -173,18 +173,20 @@ class JSearchService:
             # Normalize location for better API results
             normalized_location = self._normalize_location(location) if location else None
             
+            # Include location in query for better results since JSearch API location parameter is unreliable
+            enhanced_query = query
+            if normalized_location:
+                enhanced_query = f"{query} {normalized_location}"
+            
             params = {
-                "query": query,
+                "query": enhanced_query,
                 "page": "1",
                 "num_pages": str(num_pages),
                 "date_posted": date_posted,
                 "employment_types": employment_types
             }
             
-            if normalized_location:
-                params["location"] = normalized_location
-                
-            logger.info(f"Searching jobs with query: {query}, location: {location} -> normalized: {normalized_location}")
+            logger.info(f"Searching jobs with enhanced query: {enhanced_query}")
             
             response = requests.get(url, headers=self.headers, params=params, timeout=30)
             response.raise_for_status()
@@ -231,9 +233,11 @@ class JSearchService:
                 }
                 standardized_jobs.append(standardized_job)
             
-            # Additional location filtering for better accuracy
-            if location and normalized_location:
-                standardized_jobs = self._filter_jobs_by_location(standardized_jobs, location, normalized_location)
+            # Light location filtering since we already enhanced the query
+            if location and normalized_location and len(standardized_jobs) > 5:
+                filtered_jobs = self._light_filter_jobs_by_location(standardized_jobs, location, normalized_location)
+                if len(filtered_jobs) >= 3:  # Only apply if we still have reasonable results
+                    standardized_jobs = filtered_jobs
                 
             logger.info(f"Successfully retrieved {len(standardized_jobs)} jobs")
             return standardized_jobs
@@ -366,6 +370,57 @@ class JSearchService:
         except Exception as e:
             logger.error(f"JSearch trending jobs error: {str(e)}")
             return []
+    
+    def _light_filter_jobs_by_location(self, jobs: List[Dict[str, Any]], original_location: str, normalized_location: str) -> List[Dict[str, Any]]:
+        """
+        Light location filtering that's less aggressive than the strict filter
+        
+        Args:
+            jobs: List of job dictionaries
+            original_location: Original location string from user
+            normalized_location: Normalized location string
+            
+        Returns:
+            Lightly filtered list of jobs
+        """
+        if not jobs or not original_location:
+            return jobs
+        
+        # Extract main location keywords
+        location_keywords = set()
+        for loc in [original_location.lower(), normalized_location.lower()]:
+            words = loc.replace(',', ' ').replace('-', ' ').split()
+            location_keywords.update(words)
+        
+        # Remove common words
+        common_words = {'in', 'the', 'at', 'of', 'and', 'or', 'a', 'an'}
+        location_keywords = location_keywords - common_words
+        
+        # Prioritize jobs that match location, but don't exclude others completely
+        priority_jobs = []
+        other_jobs = []
+        
+        for job in jobs:
+            job_location_text = " ".join([
+                (job.get("location") or "").lower(),
+                (job.get("city") or "").lower(),
+                (job.get("country") or "").lower()
+            ])
+            
+            # Check for matches or remote opportunities
+            has_location_match = any(keyword in job_location_text for keyword in location_keywords)
+            is_remote = job.get("is_remote", False) or "remote" in job_location_text
+            
+            if has_location_match or is_remote:
+                priority_jobs.append(job)
+            else:
+                other_jobs.append(job)
+        
+        # Return priority jobs first, then others if we need more results
+        result = priority_jobs + other_jobs[:max(0, 10 - len(priority_jobs))]
+        
+        logger.info(f"Light filtering: {len(priority_jobs)} priority jobs, {len(result)} total returned")
+        return result
 
 # Global instance
 jsearch_service = JSearchService()
