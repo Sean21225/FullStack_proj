@@ -175,6 +175,7 @@ class JSearchService:
         
     def search_jobs(self, query: str, location: Optional[str] = None, 
                    employment_types: Optional[str] = "FULLTIME", 
+                   experience_level: Optional[str] = None,
                    num_pages: int = 1, 
                    date_posted: Optional[str] = "all") -> List[Dict[str, Any]]:
         """
@@ -184,6 +185,7 @@ class JSearchService:
             query: Job search query (e.g., "software engineer", "data scientist")
             location: Location filter (e.g., "New York, NY", "Remote")
             employment_types: Employment types (FULLTIME, PARTTIME, INTERN, CONTRACTOR)
+            experience_level: Experience level filter (internship, entry_level, associate, mid_senior, director, executive)
             num_pages: Number of pages to fetch (each page has ~10 jobs)
             date_posted: Date filter (all, today, 3days, week, month)
             
@@ -196,10 +198,27 @@ class JSearchService:
             # Normalize location for better API results
             normalized_location = self._normalize_location(location) if location else None
             
+            # Map experience level to employment types and query modifiers
+            experience_employment_mapping = {
+                "internship": ("INTERN", "intern internship"),
+                "entry_level": ("FULLTIME", "entry level junior"),
+                "associate": ("FULLTIME", "associate"),
+                "mid_senior": ("FULLTIME", "senior mid level"),
+                "director": ("FULLTIME", "director manager"),
+                "executive": ("FULLTIME", "executive VP president")
+            }
+            
+            # Adjust employment types and query based on experience level
+            if experience_level and experience_level in experience_employment_mapping:
+                employment_types, level_terms = experience_employment_mapping[experience_level]
+                enhanced_query = f"{query} {level_terms}"
+                logger.info(f"Applied experience level filter '{experience_level}': employment_types={employment_types}, level_terms='{level_terms}'")
+            else:
+                enhanced_query = query
+            
             # Include location in query for better results since JSearch API location parameter is unreliable
-            enhanced_query = query
             if normalized_location:
-                enhanced_query = f"{query} {normalized_location}"
+                enhanced_query = f"{enhanced_query} {normalized_location}"
             
             params = {
                 "query": enhanced_query,
@@ -227,9 +246,15 @@ class JSearchService:
             if len(jobs) == 0 and location and normalized_location and not self._is_us_location(normalized_location):
                 logger.info(f"No results for {normalized_location}, trying remote/global search...")
                 
+                # Build remote query with experience level if specified
+                remote_query = f"{query} remote"
+                if experience_level and experience_level in experience_employment_mapping:
+                    _, level_terms = experience_employment_mapping[experience_level]
+                    remote_query = f"{query} {level_terms} remote"
+                
                 # Try searching for remote jobs in the same field
                 remote_params = {
-                    "query": f"{query} remote",
+                    "query": remote_query,
                     "page": "1", 
                     "num_pages": str(num_pages),
                     "date_posted": date_posted,

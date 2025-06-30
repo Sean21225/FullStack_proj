@@ -123,6 +123,7 @@ async def get_job_suggestions(
         jobs = jsearch_service.search_jobs(
             query=keywords,
             location=location,
+            experience_level=experience_level,
             num_pages=1  # Limit to first page for now
         )
         
