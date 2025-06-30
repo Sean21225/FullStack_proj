@@ -16,7 +16,7 @@ from schemas import (
 )
 from auth import get_current_active_user
 from services.resume_optimizer import resume_optimizer_service
-from services.jsearch_api import jsearch_service
+from services.arbeitnow_api import arbeitnow_service
 
 router = APIRouter()
 
@@ -119,12 +119,12 @@ async def get_job_suggestions(
     Searches for relevant job postings
     """
     try:
-        # Use JSearch API to search for jobs from LinkedIn, Indeed, Glassdoor, etc.
-        jobs = jsearch_service.search_jobs(
+        # Use Arbeitnow API to search for jobs (free, unlimited)
+        jobs = arbeitnow_service.search_jobs(
             query=keywords,
             location=location,
             experience_level=experience_level,
-            num_pages=1  # Limit to first page for now
+            limit=limit
         )
         
         # Limit results as requested
@@ -151,19 +151,19 @@ async def get_company_information(
     Returns detailed company data including industry and size
     """
     try:
-        # Use JSearch API to get company information from job postings
-        companies = jsearch_service.search_companies(company_name)
+        # Use Arbeitnow API to get company information from job postings
+        companies = arbeitnow_service.search_companies(company_name)
         
         if companies:
             # Return first matching company
             company = companies[0]
             return {
                 "name": company["name"],
-                "industry": "Technology",  # JSearch doesn't provide industry data
-                "size": f"~{company['job_count']} current job openings",
-                "description": f"Company with {company['job_count']} active job postings",
-                "website": None,
-                "headquarters": ", ".join(company["locations"][:3]) if company["locations"] else None
+                "industry": company.get("industry", "Technology"),
+                "size": f"~{company.get('job_count', 0)} current job openings",
+                "description": company.get("description", f"Company with active job postings"),
+                "website": company.get("website"),
+                "headquarters": company.get("headquarters")
             }
         else:
             return {
@@ -194,11 +194,22 @@ async def get_trending_jobs(
     Helps users understand current job market demand
     """
     try:
-        # Use JSearch API to get trending jobs
-        trending_jobs = jsearch_service.get_trending_jobs(location=location)
+        # Use Arbeitnow API to get trending job types
+        # Since Arbeitnow doesn't have a specific trending endpoint, we'll search for popular tech terms
+        popular_terms = ["software engineer", "data scientist", "product manager", "devops", "frontend developer"]
+        trending_data = []
+        
+        for term in popular_terms:
+            jobs = arbeitnow_service.search_jobs(query=term, location=location, limit=5)
+            if jobs:
+                trending_data.append({
+                    "title": term.title(),
+                    "count": len(jobs),
+                    "growth": "stable"  # Static data since we don't have historical trends
+                })
         
         return {
-            "trending_jobs": trending_jobs,
+            "trending_jobs": trending_data,
             "location": location,
             "timeframe": "last_week"
         }
