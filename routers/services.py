@@ -119,26 +119,16 @@ async def get_job_suggestions(
     Searches for relevant job postings
     """
     try:
-        # Calculate number of pages needed based on limit
-        # JSearch API returns approximately 10 jobs per page
-        jobs_per_page = 10
-        num_pages = max(1, (limit + jobs_per_page - 1) // jobs_per_page)  # Ceiling division
-        
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Job search request: limit={limit}, calculated num_pages={num_pages}")
-        
         # Use JSearch API to search for jobs from LinkedIn, Indeed, Glassdoor, etc.
         jobs = jsearch_service.search_jobs(
             query=keywords,
             location=location,
             experience_level=experience_level,
-            num_pages=num_pages
+            num_pages=1  # Limit to first page for now
         )
         
         # Limit results as requested
         limited_jobs = jobs[:limit] if jobs else []
-        logger.info(f"Returning {len(limited_jobs)} jobs out of {len(jobs)} total jobs found")
         return limited_jobs
         
     except HTTPException:
