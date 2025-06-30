@@ -21,8 +21,12 @@ from auth import get_current_active_user
 from services.resume_optimizer import resume_optimizer_service
 from services.arbeitnow_api import arbeitnow_service
 from services.google_jobs_api import adzuna_jobs_service
+from services.company_data_api import CompanyDataService
 
 router = APIRouter()
+
+# Initialize company data service
+company_data_service = CompanyDataService()
 
 
 @router.post("/optimize-resume", response_model=ResumeOptimizationResponse)
@@ -173,37 +177,26 @@ async def get_company_information(
     db: Session = Depends(get_db)
 ):
     """
-    Get company information from LinkedIn
-    Returns detailed company data including industry and size
+    Get comprehensive company information using multiple data sources
+    Returns detailed company data including industry, size, and financial information
     """
     try:
-        # Use Arbeitnow API to get company information from job postings
-        companies = arbeitnow_service.search_companies(company_name)
+        # Use enhanced company data service for comprehensive information
+        company_info = company_data_service.get_company_info(company_name)
         
-        if companies:
-            # Return first matching company
-            company = companies[0]
-            return {
-                "name": company["name"],
-                "industry": company.get("industry", "Technology"),
-                "size": f"~{company.get('job_count', 0)} current job openings",
-                "description": company.get("description", f"Company with active job postings"),
-                "website": company.get("website"),
-                "headquarters": company.get("headquarters")
-            }
-        else:
-            return {
-                "name": company_name,
-                "industry": "Unknown",
-                "size": "No current job postings found",
-                "description": f"No recent job postings found for {company_name}",
-                "website": None,
-                "headquarters": None
-            }
+        return {
+            "name": company_info.get("name", company_name),
+            "industry": company_info.get("industry", "Information not available"),
+            "size": company_info.get("size", "Company size not disclosed"),
+            "description": company_info.get("description", f"No detailed information available for {company_name}"),
+            "website": company_info.get("website"),
+            "headquarters": company_info.get("headquarters", "Location not disclosed")
+        }
         
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Company lookup error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Company search failed: {str(e)}"
