@@ -117,11 +117,25 @@ class ArbeitnowService:
         filtered_jobs = []
         for job in jobs:
             # Create searchable text from job fields
+            tags_text = ""
+            if job.get("tags"):
+                if isinstance(job.get("tags"), list):
+                    tags_text = " ".join(job.get("tags", []))
+                else:
+                    tags_text = str(job.get("tags", ""))
+            
+            job_types_text = ""
+            if job.get("job_types"):
+                if isinstance(job.get("job_types"), list):
+                    job_types_text = " ".join(job.get("job_types", []))
+                else:
+                    job_types_text = str(job.get("job_types", ""))
+            
             searchable_text = " ".join([
                 (job.get("title") or "").lower(),
                 (job.get("description") or "").lower(),
-                (job.get("tags") or "").lower(),
-                " ".join(job.get("job_types", [])).lower()
+                tags_text.lower(),
+                job_types_text.lower()
             ])
             
             # Check if any search terms match
@@ -168,10 +182,16 @@ class ArbeitnowService:
             ])
             
             # Check for remote jobs
+            job_tags = job.get("tags", [])
+            if isinstance(job_tags, str):
+                job_tags = [job_tags]
+            elif not isinstance(job_tags, list):
+                job_tags = []
+            
             is_remote = (job.get("remote", False) or 
                         "remote" in location_text or
                         any(tag.lower() in ["remote", "home office", "homeoffice"] 
-                            for tag in job.get("tags", [])))
+                            for tag in job_tags if isinstance(tag, str)))
             
             # Check location matches
             matches_location = any(keyword in location_text for keyword in location_keywords)
