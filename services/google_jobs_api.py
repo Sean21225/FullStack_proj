@@ -15,8 +15,8 @@ class AdzunaJobsService:
     """Adzuna API service - worldwide job search with generous free tier"""
     
     def __init__(self):
-        self.app_id = os.getenv("ADZUNA_APP_ID", "test")
-        self.app_key = os.getenv("ADZUNA_APP_KEY", "test")
+        self.app_id = os.getenv("ADZUNA_APP_ID", "02cdd573")
+        self.app_key = os.getenv("ADZUNA_APP_KEY", "e069475e9bb8a57ca1f17f94a4da6199")
         self.base_url = "https://api.adzuna.com/v1/api"
         # Adzuna has a generous free tier with 1000 calls/month
     
@@ -38,35 +38,58 @@ class AdzunaJobsService:
             List of job dictionaries with standardized format
         """
         try:
-            # Map location to Adzuna country codes
+            # Map location to Adzuna country codes (only supported countries)
             country_mapping = {
-                "tel aviv": "il",
-                "israel": "il",
                 "washington": "us",
                 "united states": "us",
                 "usa": "us",
                 "new york": "us",
+                "california": "us",
+                "texas": "us",
+                "florida": "us",
                 "london": "gb",
                 "uk": "gb",
                 "united kingdom": "gb",
+                "manchester": "gb",
+                "birmingham": "gb",
                 "berlin": "de",
                 "germany": "de",
+                "munich": "de",
+                "hamburg": "de",
                 "paris": "fr",
                 "france": "fr",
+                "lyon": "fr",
+                "marseille": "fr",
                 "amsterdam": "nl",
                 "netherlands": "nl",
+                "rotterdam": "nl",
                 "toronto": "ca",
-                "canada": "ca"
+                "canada": "ca",
+                "vancouver": "ca",
+                "montreal": "ca",
+                "sydney": "au",
+                "australia": "au",
+                "melbourne": "au",
+                "brisbane": "au"
             }
             
-            # Default to US if no location specified or location not mapped
-            country_code = "us"
+            # Check if location is supported
+            country_code = None
             if location:
                 location_lower = location.lower()
                 for key, code in country_mapping.items():
                     if key in location_lower:
                         country_code = code
                         break
+            
+            # If location not supported or no location specified, default to US
+            if not country_code:
+                if location:
+                    location_check = location.lower()
+                    if "tel aviv" in location_check or "israel" in location_check:
+                        logger.warning(f"Location '{location}' not supported by Adzuna API")
+                        return []
+                country_code = "us"
             
             # Build search query with experience level
             search_query = query

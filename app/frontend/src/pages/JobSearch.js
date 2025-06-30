@@ -29,13 +29,26 @@ const JobSearch = () => {
       setJobs(results);
       
       // Show helpful message for location-based searches
-      if (searchParams.location && results.length > 0) {
+      if (searchParams.location && results.length === 0) {
+        // Check if it's an unsupported location
+        const unsupportedLocations = ['tel aviv', 'israel', 'india', 'japan', 'korea'];
+        const isUnsupported = unsupportedLocations.some(loc => 
+          searchParams.location.toLowerCase().includes(loc)
+        );
+        
+        if (isUnsupported) {
+          setError(`Jobs in ${searchParams.location} aren't available in our current databases. Try searching without location for remote opportunities, or search in US, UK, Germany, France, Netherlands, Canada, or Australia.`);
+        } else {
+          setError(`No jobs found in ${searchParams.location}. Try a different location or search without location for remote jobs.`);
+        }
+      } else if (searchParams.location && results.length > 0) {
+        // Check if we got results but they might not be from the exact location
         const hasLocationMatch = results.some(job => 
           job.location.toLowerCase().includes(searchParams.location.toLowerCase())
         );
         
-        if (!hasLocationMatch) {
-          setError(`No jobs found in ${searchParams.location}. Showing remote and European opportunities instead.`);
+        if (!hasLocationMatch && results.length < 5) {
+          setError(`Limited results for ${searchParams.location}. Consider searching in major cities or without location for more opportunities.`);
         }
       }
     } catch (err) {
