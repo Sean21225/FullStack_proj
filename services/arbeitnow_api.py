@@ -243,31 +243,9 @@ class ArbeitnowService:
             if location_match:
                 filtered_jobs.append(job)
         
-        # If no location matches found, check if it's because location is outside Arbeitnow's coverage
-        # In that case, return remote jobs or jobs that might be relevant
+        # If no location matches found, just return empty list - we'll use Google Jobs API as fallback
         if len(filtered_jobs) == 0:
-            logger.warning(f"No location matches for '{location}', checking for remote alternatives...")
-            
-            # Look for remote jobs as fallback
-            for job in jobs:
-                job_tags = job.get("tags", [])
-                if isinstance(job_tags, str):
-                    job_tags = [job_tags]
-                elif not isinstance(job_tags, list):
-                    job_tags = []
-                
-                is_remote = (job.get("remote", False) or 
-                           "remote" in (job.get("location") or "").lower() or
-                           any(tag.lower() in ["remote", "home office", "homeoffice"] 
-                               for tag in job_tags if isinstance(tag, str)))
-                
-                if is_remote:
-                    filtered_jobs.append(job)
-            
-            # If still no results, return a few jobs with a note that location wasn't found
-            if len(filtered_jobs) == 0:
-                logger.info(f"No remote jobs found either, returning sample of available jobs")
-                filtered_jobs = jobs[:3]  # Return first 3 jobs as examples
+            logger.info(f"No location matches for '{location}' in Arbeitnow database")
         
         logger.info(f"Location filtering for '{location}': {len(jobs)} -> {len(filtered_jobs)} jobs")
         return filtered_jobs

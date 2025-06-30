@@ -6,6 +6,9 @@ Handles resume optimization and LinkedIn scraping services
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 from database import get_db
 from models import User, Resume
@@ -17,6 +20,7 @@ from schemas import (
 from auth import get_current_active_user
 from services.resume_optimizer import resume_optimizer_service
 from services.arbeitnow_api import arbeitnow_service
+from services.google_jobs_api import adzuna_jobs_service
 
 router = APIRouter()
 
@@ -119,13 +123,35 @@ async def get_job_suggestions(
     Searches for relevant job postings
     """
     try:
-        # Use Arbeitnow API to search for jobs (free, unlimited)
+        # First try Arbeitnow API for European jobs (free, unlimited)
         jobs = arbeitnow_service.search_jobs(
             query=keywords,
             location=location,
             experience_level=experience_level,
             limit=limit
         )
+        
+        # If no results from Arbeitnow (especially for non-European locations), try Adzuna API
+        if len(jobs) == 0 and location:
+            logger.info(f"No results from Arbeitnow for location '{location}', trying Adzuna API")
+            adzuna_jobs = adzuna_jobs_service.search_jobs(
+                query=keywords,
+                location=location,
+                experience_level=experience_level,
+                limit=limit
+            )
+            jobs.extend(adzuna_jobs)
+        
+        # If still no results and no location specified, try Adzuna for broader coverage
+        elif len(jobs) < limit and not location:
+            remaining_limit = limit - len(jobs)
+            adzuna_jobs = adzuna_jobs_service.search_jobs(
+                query=keywords,
+                location=location,
+                experience_level=experience_level,
+                limit=remaining_limit
+            )
+            jobs.extend(adzuna_jobs)
         
         # Limit results as requested
         limited_jobs = jobs[:limit] if jobs else []
