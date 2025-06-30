@@ -27,6 +27,17 @@ const JobSearch = () => {
     try {
       const results = await linkedInService.searchJobs(searchParams);
       setJobs(results);
+      
+      // Show helpful message for location-based searches
+      if (searchParams.location && results.length > 0) {
+        const hasLocationMatch = results.some(job => 
+          job.location.toLowerCase().includes(searchParams.location.toLowerCase())
+        );
+        
+        if (!hasLocationMatch) {
+          setError(`No jobs found in ${searchParams.location}. Showing remote and European opportunities instead.`);
+        }
+      }
     } catch (err) {
       setError('Failed to search jobs. Please try again.');
       console.error(err);
