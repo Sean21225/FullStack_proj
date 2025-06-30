@@ -288,11 +288,21 @@ class ArbeitnowService:
                 posted_date = ""
                 if job.get("created_at"):
                     try:
-                        # Arbeitnow uses ISO format
-                        dt = datetime.fromisoformat(job["created_at"].replace('Z', '+00:00'))
-                        posted_date = dt.strftime("%Y-%m-%d")
-                    except:
-                        posted_date = job.get("created_at", "")
+                        created_at = job["created_at"]
+                        # Handle different date formats from Arbeitnow
+                        if isinstance(created_at, (int, float)):
+                            # If it's a timestamp, convert it
+                            dt = datetime.fromtimestamp(created_at)
+                            posted_date = dt.strftime("%Y-%m-%d")
+                        elif isinstance(created_at, str):
+                            # If it's a string, try to parse as ISO format
+                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                            posted_date = dt.strftime("%Y-%m-%d")
+                        else:
+                            posted_date = str(created_at)
+                    except Exception as e:
+                        # Fallback to empty string if parsing fails
+                        posted_date = ""
                 
                 # Extract location information
                 location_parts = []
