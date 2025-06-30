@@ -157,7 +157,7 @@ class ArbeitnowService:
     
     def _filter_jobs_by_location(self, jobs: List[Dict[str, Any]], location: str) -> List[Dict[str, Any]]:
         """
-        Filter jobs by location relevance
+        Filter jobs by location relevance - strict filtering for specific locations
         
         Args:
             jobs: List of job dictionaries
@@ -170,34 +170,77 @@ class ArbeitnowService:
             return jobs
         
         normalized_location = self._normalize_location(location)
-        location_keywords = normalized_location.split()
+        location_keywords = [kw.lower() for kw in normalized_location.split()]
         
         filtered_jobs = []
         for job in jobs:
             # Create searchable location text
-            location_text = " ".join([
-                (job.get("location") or "").lower(),
-                (job.get("city") or "").lower(),
-                (job.get("country") or "").lower()
-            ])
+            job_location = (job.get("location") or "").lower()
+            job_city = (job.get("city") or "").lower() 
+            job_country = (job.get("country") or "").lower()
             
-            # Check for remote jobs
+            # Combine all location fields for searching
+            full_location_text = f"{job_location} {job_city} {job_country}".strip()
+            
+            # Check for remote jobs only if user specifically searches for "remote"
             job_tags = job.get("tags", [])
             if isinstance(job_tags, str):
                 job_tags = [job_tags]
             elif not isinstance(job_tags, list):
                 job_tags = []
             
-            is_remote = (job.get("remote", False) or 
-                        "remote" in location_text or
-                        any(tag.lower() in ["remote", "home office", "homeoffice"] 
-                            for tag in job_tags if isinstance(tag, str)))
+            is_remote_job = (job.get("remote", False) or 
+                           "remote" in full_location_text or
+                           any(tag.lower() in ["remote", "home office", "homeoffice"] 
+                               for tag in job_tags if isinstance(tag, str)))
             
-            # Check location matches
-            matches_location = any(keyword in location_text for keyword in location_keywords)
+            # If user searches for "remote", include remote jobs
+            if location.lower() in ["remote", "anywhere", "global"]:
+                if is_remote_job:
+                    filtered_jobs.append(job)
+                continue
             
-            # Include if matches location or is remote
-            if matches_location or is_remote:
+            # For specific locations, use strict matching
+            location_match = False
+            
+            # Check for exact city/location matches first
+            for keyword in location_keywords:
+                if len(keyword) > 2:  # Only check meaningful keywords
+                    # Exact word match in any location field
+                    if (keyword in job_location.split() or 
+                        keyword in job_city.split() or
+                        keyword in job_country.split()):
+                        location_match = True
+                        break
+                    
+                    # Partial match for compound city names (like "tel aviv")
+                    if keyword in job_location or keyword in job_city:
+                        location_match = True
+                        break
+            
+            # Special handling for common location variations
+            if not location_match:
+                # Handle specific city mappings
+                location_mappings = {
+                    "tel aviv": ["tel aviv", "israel"],
+                    "washington": ["washington", "dc", "usa", "united states"],
+                    "new york": ["new york", "ny", "nyc", "usa", "united states"],
+                    "san francisco": ["san francisco", "sf", "california", "ca", "usa"],
+                    "london": ["london", "uk", "united kingdom", "england"],
+                    "paris": ["paris", "france"],
+                    "berlin": ["berlin", "germany"],
+                    "munich": ["munich", "münchen", "germany"],
+                    "amsterdam": ["amsterdam", "netherlands"]
+                }
+                
+                search_location = location.lower()
+                if search_location in location_mappings:
+                    expected_terms = location_mappings[search_location]
+                    if any(term in full_location_text for term in expected_terms):
+                        location_match = True
+            
+            # Include job if location matches
+            if location_match:
                 filtered_jobs.append(job)
         
         logger.info(f"Location filtering for '{location}': {len(jobs)} -> {len(filtered_jobs)} jobs")
